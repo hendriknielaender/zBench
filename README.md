@@ -4,6 +4,16 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
 ## Import the library
 In your Zig project, import the zBench package to your `build.zig` file:
 
+On your project root directory make a directory name libs.
+- Run `git submodule add https://github.com/hendriknielaender/zBench libs/zbench`
+- Then add the module into your `build.zig`
+```zig
+exe.addAnonymousModule("zbench", .{
+    .source_file = .{ .path = "libs/zbench/zbench.zig" },
+}); 
+```
+Now you can import like this:
+
 ```zig
 const zbench = @import("zbench");
 ```
