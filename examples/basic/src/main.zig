@@ -1,23 +1,24 @@
 const std = @import("std");
 const zbench = @import("zbench");
 
-fn myFunction() void {
-    var sum: usize = 0;
+fn myBenchmark(b: *zbench.Benchmark) void {
+    b.timer.start(); // Start the timer
+    // Perform the benchmark here
     var i: usize = 0;
-    while (i < 10000) : (i += 1) {
-        sum += 1;
+    while (i < 100) : (i += 1) {
+        // Simulating an operation
+        b.incrementOperations(1);
     }
 }
 
-fn myFunction2() void {
-    var sum: usize = 0;
-    var i: usize = 0;
-    while (i < 100000) : (i += 1) {
-        sum += 1;
-    }
-}
+pub fn main() !void {
+    var benchmarkResults = zbench.BenchmarkResults{
+        .results = std.ArrayList(zbench.BenchmarkResult).init(std.heap.page_allocator),
+    };
 
-pub fn main() void {
-    zbench.benchmark(myFunction, "myFunction");
-    zbench.benchmark(myFunction2, "myFunction2");
+    var bench = zbench.Benchmark.init("myBenchmark");
+    try zbench.run(myBenchmark, &bench, &benchmarkResults);
+
+    // After all benchmarks have been run...
+    try benchmarkResults.prettyPrint();
 }
