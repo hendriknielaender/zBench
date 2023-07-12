@@ -82,9 +82,8 @@ pub const BenchmarkResults = struct {
     pub fn prettyPrint(self: BenchmarkResults) !void {
         const stdout = std.io.getStdOut().writer();
         for (self.results.items) |result| {
-            //const color = self.getColor(result.duration);
-            const formatted = try std.fmt.format(stdout, "Benchmark: {s}\n", .{result.name});
-
+            const color = self.getColor(result.duration);
+            const formatted = try std.fmt.format(stdout, "{s}Benchmark: {s}\nDuration: {d} ms\n", .{ color.code(), result.name, result.duration });
             try stdout.print("{}", .{formatted});
         }
     }
