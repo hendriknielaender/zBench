@@ -2,27 +2,54 @@ const std = @import("std");
 const c = @import("./util/color.zig");
 
 pub const Timer = struct {
-    startTime: i64 = 0,
+    startTime: u64 = 0,
+    elapsedTime: u64 = 0,
 
-    // Start the timer
     pub fn start(self: *Timer) void {
-        self.startTime = std.time.milliTimestamp();
-    }
-
-    // Get elapsed time in milliseconds since the timer was started
-    pub fn elapsed(self: Timer) u64 {
-        return @intCast(std.time.milliTimestamp() - self.startTime);
-    }
-
-    // Reset the timer
-    pub fn reset(self: *Timer) void {
-        self.startTime = std.time.milliTimestamp();
+        self.startTime = @intCast(std.time.microTimestamp());
     }
 
     pub fn stop(self: *Timer) void {
+        if (self.startTime != 0) {
+            var stamp: u64 = @intCast(std.time.microTimestamp());
+            self.elapsedTime = stamp - self.startTime;
+        }
         self.startTime = 0;
     }
+
+    pub fn elapsed(self: Timer) u64 {
+        if (self.startTime == 0) {
+            return self.elapsedTime;
+        } else {
+            var stamp: u64 = @intCast(std.time.microTimestamp());
+            return stamp - self.startTime;
+        }
+    }
+
+    pub fn reset(self: *Timer) void {
+        self.startTime = @intCast(std.time.microTimestamp());
+    }
 };
+
+pub fn formatDuration(duration: u64) ![]u8 {
+    const units = [_][]const u8{ "ns", "µs", "ms", "s" };
+
+    var scaledDuration: u64 = duration;
+    var unitIndex: usize = 0;
+
+    var fractionalPart: u64 = 0;
+
+    while (scaledDuration >= 1_000 and unitIndex < units.len - 1) {
+        fractionalPart = scaledDuration % 1_000;
+        scaledDuration /= 1_000;
+        unitIndex += 1;
+    }
+
+    var buffer: [128]u8 = undefined; // You can adjust the size of this buffer as needed
+    const formatted = try std.fmt.bufPrint(&buffer, "{d}.{d}{s}", .{ scaledDuration, fractionalPart, units[unitIndex] });
+
+    return formatted;
+}
 
 pub const Benchmark = struct {
     name: []const u8,
@@ -31,13 +58,20 @@ pub const Benchmark = struct {
     minDuration: u64 = 18446744073709551615,
     maxDuration: u64 = 0,
     durations: std.ArrayList(u64),
+    allocator: *std.mem.Allocator,
 
-    // Initialization function
     pub fn init(name: []const u8, allocator: *std.mem.Allocator) !Benchmark {
+        var startTime: u64 = @intCast(std.time.microTimestamp());
+        if (startTime < 0) {
+            std.debug.warn("Failed to get start time. Defaulting to 0.\n", .{});
+            startTime = 0;
+        }
+
         var bench = Benchmark{
             .name = name,
-            .timer = Timer{ .startTime = std.time.milliTimestamp() },
+            .timer = Timer{ .startTime = startTime },
             .durations = std.ArrayList(u64).init(allocator.*),
+            .allocator = allocator,
         };
         bench.timer.start();
         return bench;
@@ -46,11 +80,11 @@ pub const Benchmark = struct {
     // Start the benchmark
     pub fn start(self: *Benchmark) void {
         self.timer.start();
+        self.startTime = self.timer.startTime;
     }
 
     // Stop the benchmark and record the duration
     pub fn stop(self: *Benchmark) !void {
-        try self.durations.append(self.timer.elapsed());
         const elapsedDuration = self.timer.elapsed();
         try self.durations.append(elapsedDuration);
 
@@ -58,6 +92,7 @@ pub const Benchmark = struct {
         if (elapsedDuration > self.maxDuration) self.maxDuration = elapsedDuration;
 
         self.totalOperations += 1;
+        self.timer.reset();
     }
 
     // Reset the benchmark
@@ -87,33 +122,56 @@ pub const Benchmark = struct {
         p995: u64,
     };
 
+    fn insertionSort(arr: []u64) void {
+        var i: usize = 1;
+        while (i < arr.len) : (i += 1) {
+            var j: usize = i;
+            while (j > 0 and arr[j - 1] > arr[j]) : (j -= 1) {
+                const temp = arr[j];
+                arr[j] = arr[j - 1];
+                arr[j - 1] = temp;
+            }
+        }
+    }
+
     // Calculate the p75, p99, and p995 durations
     pub fn calculatePercentiles(self: Benchmark) Percentiles {
-        const p75Index = (self.totalOperations * 75) / 100;
-        const p99Index = (self.totalOperations * 99) / 100;
-        const p995Index = (self.totalOperations * 995) / 1000;
+        // Sort the durations in ascending order
+        insertionSort(self.durations.items);
 
-        const p75 = self.durations[p75Index];
-        const p99 = self.durations[p99Index];
-        const p995 = self.durations[p995Index];
+        const p75Index = @min((self.durations.items.len * 75) / 100, self.durations.items.len - 1);
+        const p99Index = ((self.durations.items.len - 1) * 99) / 100;
+        const p995Index = @min((self.durations.items.len * 995) / 1000, self.durations.items.len - 1);
+
+        const p75 = self.durations.items[p75Index];
+        const p99 = self.durations.items[p99Index];
+        const p995 = self.durations.items[p995Index];
 
         return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
-    pub fn prettyPrint(self: Benchmark) void {
+    pub fn prettyPrint(self: Benchmark) !void {
+        const percentiles = self.calculatePercentiles();
+        var p75: []u8 = try formatDuration(percentiles.p75);
+        var p99: []u8 = try formatDuration(percentiles.p99);
+        var p995: []u8 = try formatDuration(percentiles.p995);
+
+        var avg: u64 = @intFromFloat(self.calculateAverage());
+
+        std.debug.print("{s:<20} {s:<12} {s:<20} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "time (avg)", "(min ... max)", "p75", "p99", "p995" });
         std.debug.print("--------------------------------------------------------------------------------------\n", .{});
-        std.debug.print("Benchmark: {s}\n", .{self.name});
+        std.debug.print("{s:<20} {s:<12} ({s} ... {s}) {s:<10} {s:<10} {s:<10}\n", .{ self.name, try formatDuration(avg), try formatDuration(self.minDuration), try formatDuration(self.maxDuration), p75, p99, p995 });
     }
 
     // Calculate the average duration
     pub fn calculateAverage(self: Benchmark) f64 {
-        var sum: u64 = 0;
-        for (self.durations) |duration| {
-            sum += duration;
+        var sum: f64 = 0;
+        for (self.durations.items) |duration| {
+            var duration_f64: f64 = @floatFromInt(duration); // Explicitly cast u64 to f64
+            sum += duration_f64;
         }
-        const total_operations_f64: f64 = @floatFromInt(self.totalOperations);
-        const sum_f64: f64 = @floatFromInt(sum);
-        return sum_f64 / total_operations_f64;
+        var total_operations_f64: f64 = @floatFromInt(self.totalOperations); // Explicitly cast usize to f64
+        return sum / total_operations_f64;
     }
 };
 
@@ -153,19 +211,18 @@ pub const BenchmarkResults = struct {
 };
 
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
-    const iterations: usize = 1000;
+    const iterations: usize = 1;
     var j: usize = 0;
     while (j < iterations) : (j += 1) {
-        bench.start();
+        bench.reset();
         func(bench);
-        try bench.stop(); // Propagate error
+        const elapsed = bench.elapsed();
+        try bench.stop();
+        try benchResult.results.append(BenchmarkResult{
+            .name = bench.name,
+            .duration = elapsed,
+        });
     }
-    bench.prettyPrint();
-    const elapsed = bench.elapsed();
-    std.debug.print("{s}: Elapsed time: {d} ms\n", .{ bench.name, elapsed });
+    try bench.prettyPrint();
     bench.report();
-    try benchResult.results.append(BenchmarkResult{
-        .name = bench.name,
-        .duration = elapsed,
-    });
 }
