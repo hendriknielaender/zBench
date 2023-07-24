@@ -19,46 +19,40 @@ const zbench = @import("zbench");
 ```
 
 ## Usage
-To use zbench, create a new benchmark function. This function should take a single argument of type *zbench.B and return void.
+Create a new benchmark function in your Zig code. This function should take a single argument of type *zbench.Benchmark. The function would run the code you wish to benchmark.
 
 ```zig
-fn benchmarkMyFunction(b: *zbench.B) void {
-    for (b.iter()) |_| {
-        // Code to benchmark here
-    }
+fn benchmarkMyFunction(b: *zbench.Benchmark) void {
+    // Code to benchmark here
 }
 ```
 You can then run your benchmarks in the main function:
 ```zig
 pub fn main() !void {
-    _ = try zBench.run(benchmarkMyFunction);
+    var allocator = std.heap.page_allocator;
+    var b = try zBench.Benchmark.init("benchmarkMyFunction", &allocator);
+    try zBench.run(benchmarkMyFunction, &b);
 }
 ```
 
-Benchmark Functions
+### Benchmark Functions
 Benchmark functions have the following signature:
 
 ```zig
-fn(b: *zBench.B) void
+fn(b: *zbench.Benchmark) void
 ```
-In the body of the function, you should loop over b.iter(), executing the code you wish to benchmark for each iteration. The b.iter() method automatically scales the number of iterations to provide a useful amount of data, no matter how fast or slow the benchmarked code is.
+The function body contains the code you wish to benchmark.
 
-You can benchmark multiple functions in a single program. Use zBench.run for each benchmark function.
+You can run multiple benchmark functions in a single program by using zBench.run for each benchmark function.
 
-### Benchmark Options
-If you want to control the number of iterations for the benchmark explicitly, you can use the N field of the zBench.B struct:
-
-```zig
-fn benchmarkMyFunction(b: *zBench.B) void {
-    b.N = 1000; // Run the benchmark 1000 times
-    for (b.iter()) |_| {
-        // Code to benchmark here
-    }
-}
-```
 ### Reporting Benchmarks
-By default, zBench will output benchmark results to the console. The output includes the benchmark name, the number of iterations, and the time taken per iteration.
+
+zBench provides a comprehensive report for each benchmark run. It includes the total operations performed, the average, min, and max durations of operations, and the percentile distribution (p75, p99, p995) of operation durations. 
 
 ```yaml
-benchmarkMyFunction  1000  1200 ns/op
+benchmark           time (avg)    (min ... max)    p75        p99        p995
+--------------------------------------------------------------------------------------
+benchmarkMyFunction 1200 ms       (100 ms ... 2000 ms) 1100 ms   1900 ms   1950 ms
 ```
+
+This example report indicates that the benchmark "benchmarkMyFunction" was run with an average time of 1200 ms per operation. The minimum and maximum operation times were 100 ms and 2000 ms, respectively. The 75th, 99th, and 99.5th percentiles of operation durations were 1100 ms, 1900 ms, and 1950 ms, respectively.
