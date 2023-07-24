@@ -16,7 +16,7 @@ pub const CustomAllocator = struct {
 fn helloWorld() []const u8 {
     var result: usize = 0;
     var i: usize = 0;
-    while (i < 1_000_000) : (i += 1) {
+    while (i < 1000) : (i += 1) {
         const square = i * i;
         result += square;
     }
@@ -25,14 +25,8 @@ fn helloWorld() []const u8 {
 }
 
 fn myBenchmark(b: *zbench.Benchmark) void {
-    var i: usize = 0;
-    while (i < 1_000) : (i += 1) {
-        b.timer.start(); // Start the timer
-        _ = helloWorld();
-        b.timer.stop(); // Stop the timer
-        b.incrementOperations(1);
-    }
-    std.debug.print("End time: {}\n", .{std.time.microTimestamp()});
+    _ = helloWorld();
+    b.incrementOperations(1); // increment by 1 after each operation
 }
 
 pub fn main() !void {
