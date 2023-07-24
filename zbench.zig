@@ -163,7 +163,7 @@ pub const Benchmark = struct {
 
         std.debug.print("{s:<20} {s:<12} {s:<20} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "time (avg)", "(min ... max)", "p75", "p99", "p995" });
         std.debug.print("--------------------------------------------------------------------------------------\n", .{});
-        std.debug.print("{s:<20} {s:<12} ({s} ... {s}) {s:<10} {s:<10} {s:<10}\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str });
+        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m) \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str });
     }
 
     // Calculate the average duration
