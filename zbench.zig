@@ -16,7 +16,7 @@ pub const Benchmark = struct {
     startTime: u64,
 
     pub fn init(name: []const u8, allocator: *std.mem.Allocator) !Benchmark {
-        var startTime: u64 = @intCast(std.time.microTimestamp());
+        var startTime: u64 = @intCast(u64, std.time.microTimestamp());
         if (startTime < 0) {
             std.debug.warn("Failed to get start time. Defaulting to 0.\n", .{});
             startTime = 0;
@@ -247,7 +247,7 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         const progress = pr * 100;
 
         // Print the progress if it's a new percentage
-        const currentProgress: u8 = @truncate(progress);
+        const currentProgress: u8 = @truncate(u8, progress);
         if (currentProgress != lastProgress) {
             std.debug.print("Progress...({}%)\n", .{currentProgress});
             lastProgress = currentProgress;
@@ -258,7 +258,7 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     duration = bench.elapsed();
 
     // Adjust N based on the actual duration achieved
-    bench.N = @intCast((bench.N * MIN_DURATION) / duration);
+    bench.N = @intCast(usize, (bench.N * MIN_DURATION) / duration);
 
     // Now run the benchmark with the adjusted N value
     bench.reset();
