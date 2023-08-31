@@ -15,20 +15,10 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    // Create a static library
-    //_ = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
-    //const zbench = b.addStaticLibrary("zbench", "src/main.zig");
-    // zbench.setBuildMode(optimize);
-
-    // Add any dependencies needed by your library here
-
-    // Install the library
-    //zbench.install();
-
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .path = "zbench.zig" },
         .target = target,
         .optimize = optimize,
     });
