@@ -3,3 +3,5 @@ zig-out
 
 # libs
 libs
+
+.DS_Store

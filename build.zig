@@ -15,6 +15,16 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
+    // Create a static library
+    //_ = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
+    //const zbench = b.addStaticLibrary("zbench", "src/main.zig");
+    // zbench.setBuildMode(optimize);
+
+    // Add any dependencies needed by your library here
+
+    // Install the library
+    //zbench.install();
+
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const unit_tests = b.addTest(.{
@@ -30,4 +40,21 @@ pub fn build(b: *std.Build) void {
     // running the unit tests.
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
+
+    const zbench_mod = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
+
+    const example_step = b.step("examples", "Build examples");
+    // Add new examples here
+    for ([_][]const u8{"basic"}) |example_name| {
+        const example = b.addExecutable(.{
+            .name = example_name,
+            .root_source_file = .{ .path = b.fmt("examples/{s}.zig", .{example_name}) },
+            .target = target,
+            .optimize = optimize,
+        });
+        const install_example = b.addInstallArtifact(example, .{});
+        example.addModule("zbench", zbench_mod);
+        example_step.dependOn(&example.step);
+        example_step.dependOn(&install_example.step);
+    }
 }
