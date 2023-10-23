@@ -1,5 +1,5 @@
 <h1 align="center">
-   <img src="logo.png" width="40%" height="40%" alt="zBench logo" title="zBench logo">
+   <img src="logo.png" width="20%" height="20%" alt="zBench logo" title="zBench logo">
   <br><br>
   ⚡ zBench - A Simple Zig Benchmarking Library
 </h1>
@@ -7,6 +7,7 @@
 zBench is a simple benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
 </div>
 <br><br>
+
 ## Import the library
 In your Zig project, import the zBench package to your `build.zig` file:
 
