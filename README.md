@@ -1,5 +1,12 @@
-# zBench - A Simple Zig Benchmarking Library
+<h1 align="center">
+   <img src="logo.png" width="20%" height="20%" alt="zBench logo" title="zBench logo">
+  <br><br>
+  ⚡ zBench - A Simple Zig Benchmarking Library
+</h1>
+<div align="center">
 zBench is a simple benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
+</div>
+<br><br>
 
 ## Import the library
 In your Zig project, import the zBench package to your `build.zig` file:
@@ -10,7 +17,7 @@ On your project root directory make a directory name libs.
 ```zig
 exe.addAnonymousModule("zbench", .{
     .source_file = .{ .path = "libs/zbench/zbench.zig" },
-}); 
+});
 ```
 Now you can import like this:
 
@@ -52,7 +59,7 @@ You can run multiple benchmark functions in a single program by using zBench.run
 
 ### Reporting Benchmarks
 
-zBench provides a comprehensive report for each benchmark run. It includes the total operations performed, the average, min, and max durations of operations, and the percentile distribution (p75, p99, p995) of operation durations. 
+zBench provides a comprehensive report for each benchmark run. It includes the total operations performed, the average, min, and max durations of operations, and the percentile distribution (p75, p99, p995) of operation durations.
 
 ```yaml
 benchmark           time (avg)    (min ... max)    p75        p99        p995
