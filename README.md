@@ -29,7 +29,7 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
   const zbench_module = zbench_dep.module("zbench");
   ```
 - Upon running `zig build test`, if you encounter a hash mismatch error, update the hash value in your `build.zig.zon` with the correct hash provided in the error message.
-  
+
 
 ## Install Option 2 (git submodule)
 On your project root directory make a directory name libs.
@@ -54,9 +54,9 @@ fn benchmarkMyFunction(b: *zbench.Benchmark) void {
     // Code to benchmark here
 }
 ```
-You can then run your benchmarks in the main function:
+You can then run your benchmarks in a test:
 ```zig
-pub fn main() !void {
+test "bench test" {
     var allocator = std.heap.page_allocator;
     var b = try zBench.Benchmark.init("benchmarkMyFunction", &allocator);
     try zBench.run(benchmarkMyFunction, &b);
@@ -89,6 +89,13 @@ benchmarkMyFunction 1200 ms       (100 ms ... 2000 ms) 1100 ms   1900 ms   1950 
 ```
 
 This example report indicates that the benchmark "benchmarkMyFunction" was run with an average time of 1200 ms per operation. The minimum and maximum operation times were 100 ms and 2000 ms, respectively. The 75th, 99th, and 99.5th percentiles of operation durations were 1100 ms, 1900 ms, and 1950 ms, respectively.
+
+### Running zBench Examples
+
+You can run all example tests with the following command:
+```bash
+zig build test_examples
+```
 
 ### Troubleshooting
 If Zig doesn't detect changes in a dependency, clear the project's `zig-cache` folder and `~/.cache/zig`.

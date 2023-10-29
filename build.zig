@@ -43,10 +43,10 @@ pub fn build(b: *std.Build) void {
 
     const zbench_mod = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
 
-    const example_step = b.step("examples", "Build examples");
+    const example_step = b.step("test_examples", "Build examples");
     // Add new examples here
-    for ([_][]const u8{"basic"}) |example_name| {
-        const example = b.addExecutable(.{
+    for ([_][]const u8{ "basic", "bubble_sort" }) |example_name| {
+        const example = b.addTest(.{
             .name = example_name,
             .root_source_file = .{ .path = b.fmt("examples/{s}.zig", .{example_name}) },
             .target = target,
