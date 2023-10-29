@@ -8,9 +8,30 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
 </div>
 <br><br>
 
-## Import the library
-In your Zig project, import the zBench package to your `build.zig` file:
+## Install Option 1 (build.zig.zon)
+- Create a build.zig.zon file in your project with the following contents:
+   ```zig
+   .{
+       .name = "YOUR_PROJECT",
+       .paths = .{""},
+       .version = "0.0.0",
+       .dependencies = .{
+           .zbench = .{
+               .url = "https://github.com/hendriknielaender/zbench/archive/COMMIT_HASH.tar.gz",
+               .hash = "DUMMY_HASH"
+           },
+       },
+   }
+   ```
+- Update your `build.zig` to use the `zbench` dependency:
+  ```zig
+  const zbench_dep = b.dependency("zbench", .{.target = target,.optimize = optimize});
+  const zbench_module = zbench_dep.module("zbench");
+  ```
+- Upon running `zig build test`, if you encounter a hash mismatch error, update the hash value in your `build.zig.zon` with the correct hash provided in the error message.
+  
 
+## Install Option 2 (git submodule)
 On your project root directory make a directory name libs.
 - Run `git submodule add https://github.com/hendriknielaender/zBench libs/zbench`
 - Then add the module into your `build.zig`
@@ -68,3 +89,6 @@ benchmarkMyFunction 1200 ms       (100 ms ... 2000 ms) 1100 ms   1900 ms   1950 
 ```
 
 This example report indicates that the benchmark "benchmarkMyFunction" was run with an average time of 1200 ms per operation. The minimum and maximum operation times were 100 ms and 2000 ms, respectively. The 75th, 99th, and 99.5th percentiles of operation durations were 1100 ms, 1900 ms, and 1950 ms, respectively.
+
+### Troubleshooting
+If Zig doesn't detect changes in a dependency, clear the project's `zig-cache` folder and `~/.cache/zig`.
