@@ -9,7 +9,7 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
 <br><br>
 
 ## Install Option 1 (build.zig.zon)
-- Create a build.zig.zon file in your project with the following contents:
+Create a build.zig.zon file in your project with the following contents:
    ```zig
    .{
        .name = "YOUR_PROJECT",
@@ -23,12 +23,12 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
        },
    }
    ```
-- Update your `build.zig` to use the `zbench` dependency:
+Update your `build.zig` to use the `zbench` dependency:
   ```zig
   const zbench_dep = b.dependency("zbench", .{.target = target,.optimize = optimize});
   const zbench_module = zbench_dep.module("zbench");
   ```
-- Upon running `zig build test`, if you encounter a hash mismatch error, update the hash value in your `build.zig.zon` with the correct hash provided in the error message.
+Upon running `zig build test`, if you encounter a hash mismatch error, update the hash value in your `build.zig.zon` with the correct hash provided in the error message.
   
 
 ## Install Option 2 (git submodule)
