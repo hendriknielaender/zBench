@@ -118,7 +118,7 @@ pub const Benchmark = struct {
 
     // Calculate the p75, p99, and p995 durations
     pub fn calculatePercentiles(self: Benchmark) Percentiles {
-        // quickSort will fail (low == high index), so we need a safety check here
+        // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
         var lastIndex: usize = 0;
         if (len > 0) {
@@ -277,7 +277,7 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         .name = bench.name,
         .duration = elapsed,
     });
-    bench.incrementOperations(bench.N); // TODO : is this intentional? should this be a 'set total ops'?
+    bench.incrementOperations(bench.N); // TODO : is this intentional? Should this be a 'set total ops'?
 
     bench.report();
     try bench.prettyPrint();

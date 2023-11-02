@@ -1,7 +1,7 @@
 const std = @import("std");
 
 /// Timer tracks the time based on Unix timestamps obtained from
-/// std.time.nanoTimestamp, which returns and i128 - which in turn is casted to a u64;
+/// std.time.nanoTimestamp, which returns an i128 - which in turn is casted to a u64;
 /// - assuming no machine that runs your code has its clock set pre-Unix epoch, casting to unsigned should be safe
 /// - it will overflow in April of the year 2262, so some time to refactor if needed
 pub const Timer = struct {
