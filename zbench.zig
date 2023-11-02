@@ -172,8 +172,9 @@ pub const Benchmark = struct {
         for (self.durations.items) |duration| {
             sum += duration;
         }
-        const ops = self.totalOperations;
-        const avg = sum / ops;
+        const len = self.durations.items.len;
+        if (len == 0) return 0; // avoid division by zero
+        const avg = sum / len;
         return avg;
     }
 };
