@@ -168,17 +168,15 @@ pub const Benchmark = struct {
 
     // Calculate the average duration
     pub fn calculateAverage(self: Benchmark) u64 {
-        // prevent a div by zero: check number of ops
-        const ops = self.totalOperations;
-        if (ops == 0) return 0;
+        // prevent division by zero
+        const len = self.durations.items.len;
+        if (len == 0) return 0;
 
         var sum: u64 = 0;
         for (self.durations.items) |duration| {
             sum += duration;
         }
 
-        const len = self.durations.items.len;
-        if (len == 0) return 0; // avoid division by zero
         const avg = sum / len;
 
         return avg;
