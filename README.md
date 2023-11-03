@@ -1,12 +1,10 @@
-<h1 align="center">
-   <img src="logo.png" width="20%" height="20%" alt="zBench logo" title="zBench logo">
-  <br><br>
-  ⚡ zBench - A Simple Zig Benchmarking Library
-</h1>
-<div align="center">
+# ⚡ zBench - A Simple Zig Benchmarking Library
+[![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/hendriknielaender/zbench/blob/HEAD/LICENSE)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/hendriknielaender/zbench)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/hendriknielaender/zbench/blob/HEAD/CONTRIBUTING.md)
+<img src="logo.png" alt="zBench logo" align="right" width="20%"/>
+
 zBench is a simple benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
-</div>
-<br><br>
 
 ## Install Option 1 (build.zig.zon)
 Create a build.zig.zon file in your project with the following contents:
@@ -98,3 +96,15 @@ zig build test_examples
 
 ### Troubleshooting
 If Zig doesn't detect changes in a dependency, clear the project's `zig-cache` folder and `~/.cache/zig`.
+
+## Contributing
+
+The main purpose of this repository is to continue to evolve zBench, making it faster and more efficient. We are grateful to the community for contributing bugfixes and improvements. Read below to learn how you can take part in improving zBench.
+
+### Contributing Guide
+
+Read our [contributing guide](CONTRIBUTING.md) to learn about our development process, how to propose bugfixes and improvements, and how to build and test your changes to zBench.
+
+### License
+
+zBench is [MIT licensed](./LICENSE).
