@@ -8,7 +8,7 @@ pub const Benchmark = struct {
     N: usize = 1, // number of iterations
     timer: t.Timer,
     totalOperations: usize = 0,
-    minDuration: u64 = 18446744073709551615,
+    minDuration: u64 = 18446744073709551615, // full 64 bits as a start
     maxDuration: u64 = 0,
     totalDuration: u64 = 0,
     durations: std.ArrayList(u64),
@@ -50,7 +50,7 @@ pub const Benchmark = struct {
 
         self.durations.append(elapsedDuration) catch unreachable;
 
-        self.totalOperations += 1;
+        self.totalOperations += 1; // TODO : verify this is adequate here
     }
 
     // Reset the benchmark
@@ -118,10 +118,8 @@ pub const Benchmark = struct {
 
     // Calculate the p75, p99, and p995 durations
     pub fn calculatePercentiles(self: Benchmark) Percentiles {
-        quickSort(self.durations.items, 0, self.durations.items.len - 1);
-
+        // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
-
         var lastIndex: usize = 0;
         if (len > 0) {
             lastIndex = len - 1;
@@ -129,6 +127,8 @@ pub const Benchmark = struct {
             std.debug.print("Cannot calculate percentiles: empty durations list\n", .{});
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
+        quickSort(self.durations.items, 0, lastIndex - 1);
+
         const p75Index: usize = len * 75 / 100;
         const p99Index: usize = len * 99 / 100;
         const p995Index: usize = len * 995 / 1000;
@@ -168,12 +168,16 @@ pub const Benchmark = struct {
 
     // Calculate the average duration
     pub fn calculateAverage(self: Benchmark) u64 {
+        // prevent a div by zero: check number of ops
+        const ops = self.totalOperations;
+        if (ops == 0) return 0;
+
         var sum: u64 = 0;
         for (self.durations.items) |duration| {
             sum += duration;
         }
-        const ops = self.totalOperations;
-        const avg = sum / ops;
+        const avg = sum / ops; // TODO : make sure n ops == self.durations.items.len
+
         return avg;
     }
 };
@@ -182,7 +186,7 @@ pub const BenchFunc = fn (*Benchmark) void;
 
 pub const BenchmarkResult = struct {
     name: []const u8,
-    duration: u64, // Duration in milliseconds
+    duration: u64, // for total duration in nanoseconds
 };
 
 pub const BenchmarkResults = struct {
@@ -214,17 +218,16 @@ pub const BenchmarkResults = struct {
 };
 
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
-    const MIN_DURATION = 1_000; // minimum benchmark time in milliseconds (1 second)
-    const MAX_N = 10000;
+    const MIN_DURATION = 1_000_000; // minimum benchmark time in nanoseconds (1 millisecond)
+    const MAX_N = 10000; // maximum number of executions for the final benchmark run
     const MAX_ITERATIONS = 10; // Define a maximum number of iterations
 
-    // initially N=1
-    bench.N = 1;
+    bench.N = 1; // initial value; will be updated...
     var duration: u64 = 0;
     var iterations: usize = 0; // Add an iterations counter
 
     var lastProgress: u8 = 0;
-    // increase N until we've run for a long enough time
+    // increase N until we've run for a sufficiently long enough time
     while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
         bench.reset();
 
@@ -262,20 +265,19 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
 
     // Now run the benchmark with the adjusted N value
     bench.reset();
-
     var j: usize = 0;
-
     while (j < bench.N) : (j += 1) {
         bench.start();
         func(bench);
         bench.stop();
     }
+
     const elapsed = bench.elapsed();
     try benchResult.results.append(BenchmarkResult{
         .name = bench.name,
         .duration = elapsed,
     });
-    bench.incrementOperations(bench.N);
+    bench.incrementOperations(bench.N); // TODO : is this intentional? Should this be a 'set total ops'?
 
     bench.report();
     try bench.prettyPrint();
