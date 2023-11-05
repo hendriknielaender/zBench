@@ -70,10 +70,6 @@ pub const Benchmark = struct {
         self.totalOperations = ops;
     }
 
-    pub fn incrementOperations(self: *Benchmark, ops: usize) void {
-        self.totalOperations += ops;
-    }
-
     pub fn report(self: *Benchmark) void {
         std.debug.print("Total operations: {}\n", .{self.totalOperations});
     }
