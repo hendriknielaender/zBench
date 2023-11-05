@@ -24,9 +24,8 @@ fn helloWorld() []const u8 {
     return "Hello, world!";
 }
 
-fn myBenchmark(b: *zbench.Benchmark) void {
+fn myBenchmark(_: *zbench.Benchmark) void {
     _ = helloWorld();
-    b.incrementOperations(1); // increment by 1 after each operation
 }
 
 test "bench test basic" {
