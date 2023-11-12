@@ -49,8 +49,6 @@ pub const Benchmark = struct {
         if (elapsedDuration > self.maxDuration) self.maxDuration = elapsedDuration;
 
         self.durations.append(elapsedDuration) catch unreachable;
-
-        self.totalOperations += 1; // TODO : verify this is adequate here
     }
 
     // Reset the benchmark
@@ -68,8 +66,8 @@ pub const Benchmark = struct {
         return self.timer.elapsed();
     }
 
-    pub fn incrementOperations(self: *Benchmark, ops: usize) void {
-        self.totalOperations += ops;
+    pub fn setTotalOperations(self: *Benchmark, ops: usize) void {
+        self.totalOperations = ops;
     }
 
     pub fn report(self: *Benchmark) void {
@@ -278,8 +276,9 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         .name = bench.name,
         .duration = elapsed,
     });
-    bench.incrementOperations(bench.N); // TODO : is this intentional? Should this be a 'set total ops'?
 
+    bench.setTotalOperations(bench.N);
     bench.report();
+
     try bench.prettyPrint();
 }
