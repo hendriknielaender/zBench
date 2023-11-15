@@ -16,7 +16,7 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
         .version = "1.0.0",
         .paths = .{""},
         .dependencies = .{
-    +       .json = .{
+    +       .zbench = .{
     +           .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
     +       },
         },
@@ -66,7 +66,7 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
         .version = "1.0.0",
         .paths = .{""},
         .dependencies = .{
-            .json = .{
+            .zbench = .{
                 .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
     +           .hash = "<HASH>",
             },
