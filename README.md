@@ -7,26 +7,72 @@
 zBench is a simple benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
 
 ## Install Option 1 (build.zig.zon)
-Create a build.zig.zon file in your project with the following contents:
-   ```zig
-   .{
-       .name = "YOUR_PROJECT",
-       .paths = .{""},
-       .version = "0.0.0",
-       .dependencies = .{
-           .zbench = .{
-               .url = "https://github.com/hendriknielaender/zbench/archive/COMMIT_HASH.tar.gz",
-               .hash = "DUMMY_HASH"
-           },
-       },
-   }
-   ```
-Update your `build.zig` to use the `zbench` dependency:
-  ```zig
-  const zbench_dep = b.dependency("zbench", .{.target = target,.optimize = optimize});
-  const zbench_module = zbench_dep.module("zbench");
-  ```
-Upon running `zig build test`, if you encounter a hash mismatch error, update the hash value in your `build.zig.zon` with the correct hash provided in the error message.
+
+1. Declare zbench as a dependency in `build.zig.zon`:
+
+    ```diff
+    .{
+        .name = "my-project",
+        .version = "1.0.0",
+        .paths = .{""},
+        .dependencies = .{
+    +       .json = .{
+    +           .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
+    +       },
+        },
+    }
+    ```
+
+2. Add the module in `build.zig`:
+
+    ```diff
+    const std = @import("std");
+
+    pub fn build(b: *std.Build) void {
+        const target = b.standardTargetOptions(.{});
+        const optimize = b.standardOptimizeOption(.{});
+
+    +   const opts = .{ .target = target, .optimize = optimize };
+    +   const zbench_module = b.dependency("zbench", opts).module("zbench");
+
+        const exe = b.addExecutable(.{
+            .name = "test",
+            .root_source_file = .{ .path = "src/main.zig" },
+            .target = target,
+            .optimize = optimize,
+        });
+    +   exe.addModule("zbench", zbench_module);
+        exe.install();
+
+        ...
+    }
+    ```
+
+3. Get the package hash:
+
+    ```
+    $ zig build
+    my-project/build.zig.zon:6:20: error: url field is missing corresponding hash field
+            .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    note: expected .hash = "<HASH>",
+    ```
+
+4. Update `build.zig.zon` package hash value:
+
+    ```diff
+    .{
+        .name = "my-project",
+        .version = "1.0.0",
+        .paths = .{""},
+        .dependencies = .{
+            .json = .{
+                .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
+    +           .hash = "<HASH>",
+            },
+        },
+    }
+    ```
 
 ## Install Option 2 (git submodule)
 On your project root directory make a directory name libs.
