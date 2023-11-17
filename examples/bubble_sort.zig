@@ -28,10 +28,9 @@ fn bubbleSort(nums: []i32) void {
     }
 }
 
-fn myBenchmark(b: *zbench.Benchmark) void {
+fn myBenchmark(_: *zbench.Benchmark) void {
     var numbers = [_]i32{ 4, 1, 3, 1, 5, 2 };
     _ = bubbleSort(&numbers);
-    b.incrementOperations(1); // increment by 1 after each operation
 }
 
 test "bench test bubbleSort" {
