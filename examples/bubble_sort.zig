@@ -1,18 +1,7 @@
 const std = @import("std");
 const inc = @import("include");
 const zbench = @import("zbench");
-
-pub const CustomAllocator = struct {
-    allocator: std.mem.Allocator,
-
-    pub fn create() CustomAllocator {
-        return CustomAllocator{ .allocator = std.heap.page_allocator };
-    }
-
-    pub fn as_mut(self: *CustomAllocator) *std.mem.Allocator {
-        return &self.allocator;
-    }
-};
+const test_allocator = std.testing.allocator;
 
 fn bubbleSort(nums: []i32) void {
     var i: usize = nums.len - 1;
@@ -34,11 +23,11 @@ fn myBenchmark(_: *zbench.Benchmark) void {
 }
 
 test "bench test bubbleSort" {
-    var customAllocator = CustomAllocator.create();
-    var resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(customAllocator.allocator);
-    var bench = try zbench.Benchmark.init("Bubble Sort Benchmark", customAllocator.as_mut());
+    var resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
+    var bench = try zbench.Benchmark.init("Bubble Sort Benchmark", test_allocator);
     var benchmarkResults = zbench.BenchmarkResults{
         .results = resultsAlloc,
     };
+    defer benchmarkResults.results.deinit();
     try zbench.run(myBenchmark, &bench, &benchmarkResults);
 }
