@@ -101,8 +101,12 @@ You can then run your benchmarks in a test:
 ```zig
 test "bench test" {
     var allocator = std.heap.page_allocator;
-    var b = try zBench.Benchmark.init("benchmarkMyFunction", &allocator);
-    try zBench.run(benchmarkMyFunction, &b);
+    const results = std.ArrayList(zbench.BenchmarkResult).init(allocator);
+    var benchmark = try zBench.Benchmark.init("benchmarkMyFunction", &allocator);
+    var benchmarkResults = zBench.BenchmarkResults{
+        .results = results,
+    };
+    try zBench.run(benchmarkMyFunction, &benchmark, &benchmarkResults);
 }
 ```
 
