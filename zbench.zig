@@ -12,10 +12,10 @@ pub const Benchmark = struct {
     maxDuration: u64 = 0,
     totalDuration: u64 = 0,
     durations: std.ArrayList(u64),
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
     startTime: u64,
 
-    pub fn init(name: []const u8, allocator: *std.mem.Allocator) !Benchmark {
+    pub fn init(name: []const u8, allocator: std.mem.Allocator) !Benchmark {
         var startTime: u64 = @intCast(std.time.microTimestamp());
         if (startTime < 0) {
             std.debug.warn("Failed to get start time. Defaulting to 0.\n", .{});
@@ -24,9 +24,9 @@ pub const Benchmark = struct {
 
         var bench = Benchmark{
             .name = name,
-            .timer = t.Timer{ .startTime = startTime },
-            .durations = std.ArrayList(u64).init(allocator.*),
             .allocator = allocator,
+            .timer = t.Timer{ .startTime = startTime },
+            .durations = std.ArrayList(u64).init(allocator),
             .startTime = startTime,
         };
         bench.timer.start();
@@ -60,7 +60,7 @@ pub const Benchmark = struct {
         self.maxDuration = 0;
         self.totalDuration = 0;
         self.durations.deinit();
-        self.durations = std.ArrayList(u64).init(self.allocator.*);
+        self.durations = std.ArrayList(u64).init(self.allocator);
     }
 
     // Function to get elapsed time since benchmark start
@@ -219,6 +219,7 @@ pub const BenchmarkResults = struct {
 };
 
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
+    defer bench.durations.deinit();
     const MIN_DURATION = 1_000_000; // minimum benchmark time in nanoseconds (1 millisecond)
     const MAX_N = 10000; // maximum number of executions for the final benchmark run
     const MAX_ITERATIONS = 10; // Define a maximum number of iterations
@@ -281,5 +282,6 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     bench.incrementOperations(bench.N); // TODO : is this intentional? Should this be a 'set total ops'?
 
     bench.report();
+
     try bench.prettyPrint();
 }
