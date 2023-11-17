@@ -16,7 +16,7 @@ pub const Benchmark = struct {
     startTime: u64,
 
     pub fn init(name: []const u8, allocator: std.mem.Allocator) !Benchmark {
-        var startTime: u64 = @intCast(std.time.microTimestamp());
+        var startTime: u64 = @intCast(std.time.nanoTimestamp());
         if (startTime < 0) {
             std.debug.warn("Failed to get start time. Defaulting to 0.\n", .{});
             startTime = 0;
