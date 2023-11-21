@@ -3,18 +3,33 @@ const c = @import("./util/color.zig");
 const t = @import("./util/timer.zig");
 const format = @import("./util/format.zig");
 
+/// Benchmark is a type representing a single benchmark session.
+/// It provides metrics and utilities for performance measurement.
 pub const Benchmark = struct {
+    /// Name of the benchmark.
     name: []const u8,
-    N: usize = 1, // number of iterations
+    /// Number of iterations to be performed in the benchmark.
+    N: usize = 1,
+    /// Timer used to track the duration of the benchmark.
     timer: t.Timer,
+    /// Total number of operations performed during the benchmark.
     totalOperations: usize = 0,
-    minDuration: u64 = 18446744073709551615, // full 64 bits as a start
+    /// Minimum duration recorded among all runs (initially set to the maximum possible value).
+    minDuration: u64 = 18446744073709551615,
+    /// Maximum duration recorded among all runs.
     maxDuration: u64 = 0,
+    /// Total duration accumulated over all runs.
     totalDuration: u64 = 0,
+    /// A dynamic list storing the duration of each run.
     durations: std.ArrayList(u64),
+    /// Memory allocator used by the benchmark.
     allocator: std.mem.Allocator,
+    /// Start time of the benchmark.
     startTime: u64,
 
+    /// Initializes a new Benchmark instance.
+    /// name: A string representing the benchmark's name.
+    /// allocator: Memory allocator to be used.
     pub fn init(name: []const u8, allocator: std.mem.Allocator) !Benchmark {
         var startTime: u64 = @intCast(std.time.nanoTimestamp());
         if (startTime < 0) {
@@ -33,13 +48,13 @@ pub const Benchmark = struct {
         return bench;
     }
 
-    // Start the benchmark
+    /// Starts or restarts the benchmark timer.
     pub fn start(self: *Benchmark) void {
         self.timer.start();
         self.startTime = self.timer.startTime;
     }
 
-    // Stop the benchmark and record the duration
+    /// Stop the benchmark and record the duration
     pub fn stop(self: *Benchmark) void {
         self.timer.stop();
         const elapsedDuration = self.timer.elapsed();
@@ -51,7 +66,7 @@ pub const Benchmark = struct {
         self.durations.append(elapsedDuration) catch unreachable;
     }
 
-    // Reset the benchmark
+    /// Reset the benchmark
     pub fn reset(self: *Benchmark) void {
         self.totalOperations = 0;
         self.minDuration = 18446744073709551615;
@@ -61,15 +76,18 @@ pub const Benchmark = struct {
         self.durations = std.ArrayList(u64).init(self.allocator);
     }
 
-    // Function to get elapsed time since benchmark start
+    /// Returns the elapsed time since the benchmark started.
     pub fn elapsed(self: *Benchmark) u64 {
         return self.timer.elapsed();
     }
 
+    /// Sets the total number of operations performed.
+    /// ops: Number of operations.
     pub fn setTotalOperations(self: *Benchmark, ops: usize) void {
         self.totalOperations = ops;
     }
 
+    /// Prints a report of total operations performed during the benchmark.
     pub fn report(self: *Benchmark) void {
         std.debug.print("Total operations: {}\n", .{self.totalOperations});
     }
@@ -114,7 +132,7 @@ pub const Benchmark = struct {
         return i;
     }
 
-    // Calculate the p75, p99, and p995 durations
+    /// Calculate the p75, p99, and p995 durations
     pub fn calculatePercentiles(self: Benchmark) Percentiles {
         // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
@@ -164,7 +182,7 @@ pub const Benchmark = struct {
         std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m) \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str });
     }
 
-    // Calculate the average duration
+    /// Calculate the average duration
     pub fn calculateAverage(self: Benchmark) u64 {
         // prevent division by zero
         const len = self.durations.items.len;
@@ -181,16 +199,27 @@ pub const Benchmark = struct {
     }
 };
 
+/// BenchFunc is a function type that represents a benchmark function.
+/// It takes a pointer to a Benchmark object.
 pub const BenchFunc = fn (*Benchmark) void;
 
+/// BenchmarkResult stores the result of a single benchmark.
+/// It includes the name and the total duration of the benchmark.
 pub const BenchmarkResult = struct {
+    /// Name of the benchmark.
     name: []const u8,
-    duration: u64, // for total duration in nanoseconds
+    /// Total duration of the benchmark in nanoseconds.
+    duration: u64,
 };
 
+/// BenchmarkResults acts as a container for multiple benchmark results.
+/// It provides functionality to format and print these results.
 pub const BenchmarkResults = struct {
+    /// A dynamic list of BenchmarkResult objects.
     results: std.ArrayList(BenchmarkResult),
 
+    /// Determines the color representation based on the duration of the benchmark.
+    /// duration: The duration to evaluate.
     pub fn getColor(self: *const BenchmarkResults, duration: u64) c.Color {
         const max_duration = @max(self.results.items[0].duration, self.results.items[self.results.items.len - 1].duration);
         const min_duration = @min(self.results.items[0].duration, self.results.items[self.results.items.len - 1].duration);
@@ -206,6 +235,7 @@ pub const BenchmarkResults = struct {
         return c.Color.red;
     }
 
+    /// Formats and prints the benchmark results in a readable format.
     pub fn prettyPrint(self: BenchmarkResults) !void {
         const stdout = std.io.getStdOut().writer();
         std.debug.print("--------------------------------------------------------------------------------------\n", .{});
@@ -216,6 +246,10 @@ pub const BenchmarkResults = struct {
     }
 };
 
+/// Executes a benchmark function within the context of a given Benchmark object.
+/// func: The benchmark function to be executed.
+/// bench: A pointer to a Benchmark object for tracking the benchmark.
+/// benchResult: A pointer to BenchmarkResults to store the results.
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
     defer bench.durations.deinit();
     const MIN_DURATION = 1_000_000; // minimum benchmark time in nanoseconds (1 millisecond)

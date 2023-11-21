@@ -15,15 +15,19 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    // Create a static library
-    //_ = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
-    //const zbench = b.addStaticLibrary("zbench", "src/main.zig");
-    // zbench.setBuildMode(optimize);
+    const lib = b.addStaticLibrary(.{
+        .name = "zbench",
+        // In this case the main source file is merely a path, however, in more
+        // complicated build scripts, this could be a generated file.
+        .root_source_file = .{ .path = "zbench.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
 
-    // Add any dependencies needed by your library here
-
-    // Install the library
-    //zbench.install();
+    // This declares intent for the library to be installed into the standard
+    // location when the user invokes the "install" step (the default step when
+    // running `zig build`).
+    b.installArtifact(lib);
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
@@ -57,4 +61,13 @@ pub fn build(b: *std.Build) void {
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }
+
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = lib.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "docs",
+    });
+
+    const docs_step = b.step("docs", "Copy documentation artifacts to prefix path");
+    docs_step.dependOn(&install_docs.step);
 }
