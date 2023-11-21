@@ -9,9 +9,7 @@ fn bubbleSort(nums: []i32) void {
         var j: usize = 0;
         while (j < i) : (j += 1) {
             if (nums[j] > nums[j + 1]) {
-                var tmp = nums[j];
-                nums[j] = nums[j + 1];
-                nums[j + 1] = tmp;
+                std.mem.swap(i32, &nums[j], &nums[j + 1]);
             }
         }
     }
