@@ -119,10 +119,10 @@ pub const Benchmark = struct {
         // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
         var lastIndex: usize = 0;
-        if (len > 0) {
+        if (len > 1) {
             lastIndex = len - 1;
         } else {
-            std.debug.print("Cannot calculate percentiles: empty durations list\n", .{});
+            std.debug.print("Cannot calculate percentiles: recorded less than two durations\n", .{});
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
         quickSort(self.durations.items, 0, lastIndex - 1);
@@ -218,16 +218,16 @@ pub const BenchmarkResults = struct {
 
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
     defer bench.durations.deinit();
-    const MIN_DURATION = 1_000_000; // minimum benchmark time in nanoseconds (1 millisecond)
-    const MAX_N = 10000; // maximum number of executions for the final benchmark run
-    const MAX_ITERATIONS = 10; // Define a maximum number of iterations
+    const MIN_DURATION = 1_000_000_000; // minimum benchmark time in nanoseconds (1 second)
+    const MAX_N = 131072; // maximum number of executions for the final benchmark run
+    const MAX_ITERATIONS = 16384; // Define a maximum number of iterations
 
     bench.N = 1; // initial value; will be updated...
     var duration: u64 = 0;
     var iterations: usize = 0; // Add an iterations counter
-
     var lastProgress: u8 = 0;
-    // increase N until we've run for a sufficiently long enough time
+
+    // increase N until we've run for a sufficiently long time or exceeded max_iterations
     while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
         bench.reset();
 
@@ -246,22 +246,25 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         }
 
         // Calculate the progress percentage
-        const pr = bench.N / MAX_N;
-        const progress = pr * 100;
+        const progress = bench.N * 100 / MAX_N;
 
         // Print the progress if it's a new percentage
         const currentProgress: u8 = @truncate(progress);
         if (currentProgress != lastProgress) {
-            std.debug.print("Progress...({}%)\n", .{currentProgress});
+            std.debug.print("Preparing...({}%)\n", .{currentProgress});
             lastProgress = currentProgress;
         }
         iterations += 1; // Increase the iteration counter
+        duration += bench.elapsed(); // ...and duration
     }
-    // Get the elapsed time
-    duration = bench.elapsed();
+    // Get the total elapsed time
+    // duration = bench.elapsed();
 
     // Adjust N based on the actual duration achieved
     bench.N = @intCast((bench.N * MIN_DURATION) / duration);
+    // check that N doesn't go out of bounds
+    if (bench.N == 0) bench.N = 1;
+    if (bench.N > MAX_N) bench.N = MAX_N;
 
     // Now run the benchmark with the adjusted N value
     bench.reset();
