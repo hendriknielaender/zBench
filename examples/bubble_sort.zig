@@ -23,7 +23,7 @@ fn myBenchmark(_: *zbench.Benchmark) void {
 }
 
 test "bench test bubbleSort" {
-    var resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
+    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
     var bench = try zbench.Benchmark.init("Bubble Sort Benchmark", test_allocator);
     var benchmarkResults = zbench.BenchmarkResults{
         .results = resultsAlloc,
