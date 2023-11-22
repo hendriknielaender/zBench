@@ -208,7 +208,6 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     bench.N = 1; // initial value; will be updated...
     var duration: u64 = 0;
     var iterations: usize = 0; // Add an iterations counter
-    //var lastProgress: u8 = 0;
 
     // increase N until we've run for a sufficiently long time or exceeded max_iterations
     while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
@@ -227,16 +226,6 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         } else {
             bench.N = MAX_N;
         }
-
-        // // Calculate the progress percentage
-        // const progress = bench.N * 100 / MAX_N;
-        //
-        // // Print the progress if it's a new percentage
-        // const currentProgress: u8 = @truncate(progress);
-        // if (currentProgress != lastProgress) {
-        //     std.debug.print("Preparing...({}%)\n", .{currentProgress});
-        //     lastProgress = currentProgress;
-        // }
 
         iterations += 1; // Increase the iteration counter
         duration += bench.elapsed(); // ...and duration
