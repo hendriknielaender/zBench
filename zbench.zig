@@ -241,8 +241,9 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         iterations += 1; // Increase the iteration counter
         duration += bench.elapsed(); // ...and duration
     }
-    // Get the total elapsed time
-    // duration = bench.elapsed();
+
+    // Safety first: make sure the recorded durations aren't all-zero
+    if (duration == 0) duration = 1;
 
     // Adjust N based on the actual duration achieved
     bench.N = @intCast((bench.N * MIN_DURATION) / duration);
