@@ -1,29 +1,19 @@
 const std = @import("std");
+const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0 };
 
-// Although this function looks imperative, note that its job is to
-// declaratively construct a build graph that will be executed by an external
-// runner.
 pub fn build(b: *std.Build) void {
-    // Standard target options allows the person running `zig build` to choose
-    // what target to build for. Here we do not override the defaults, which
-    // means any target is allowed, and the default is native. Other options
-    // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
-
-    // Standard optimization options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
-    // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    // Create a static library
-    //_ = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
-    //const zbench = b.addStaticLibrary("zbench", "src/main.zig");
-    // zbench.setBuildMode(optimize);
+    const lib = b.addStaticLibrary(.{
+        .name = "zbench",
+        .root_source_file = .{ .path = "zbench.zig" },
+        .target = target,
+        .optimize = optimize,
+        .version = version,
+    });
 
-    // Add any dependencies needed by your library here
-
-    // Install the library
-    //zbench.install();
+    b.installArtifact(lib);
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
@@ -57,4 +47,13 @@ pub fn build(b: *std.Build) void {
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }
+
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = lib.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "docs",
+    });
+
+    const docs_step = b.step("docs", "Copy documentation artifacts to prefix path");
+    docs_step.dependOn(&install_docs.step);
 }
