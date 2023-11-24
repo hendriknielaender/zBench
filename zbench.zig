@@ -23,8 +23,6 @@ pub const Benchmark = struct {
     durations: std.ArrayList(u64),
     /// Memory allocator used by the benchmark.
     allocator: std.mem.Allocator,
-    /// Start time of the benchmark.
-    startTime: u64,
 
     /// Initializes a new Benchmark instance.
     /// name: A string representing the benchmark's name.
