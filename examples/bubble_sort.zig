@@ -9,9 +9,7 @@ fn bubbleSort(nums: []i32) void {
         var j: usize = 0;
         while (j < i) : (j += 1) {
             if (nums[j] > nums[j + 1]) {
-                var tmp = nums[j];
-                nums[j] = nums[j + 1];
-                nums[j + 1] = tmp;
+                std.mem.swap(i32, &nums[j], &nums[j + 1]);
             }
         }
     }
@@ -23,7 +21,7 @@ fn myBenchmark(_: *zbench.Benchmark) void {
 }
 
 test "bench test bubbleSort" {
-    var resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
+    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
     var bench = try zbench.Benchmark.init("Bubble Sort Benchmark", test_allocator);
     var benchmarkResults = zbench.BenchmarkResults{
         .results = resultsAlloc,

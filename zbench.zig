@@ -1,6 +1,5 @@
 const std = @import("std");
 const c = @import("./util/color.zig");
-const t = @import("./util/timer.zig");
 const format = @import("./util/format.zig");
 
 /// Benchmark is a type representing a single benchmark session.
@@ -11,7 +10,7 @@ pub const Benchmark = struct {
     /// Number of iterations to be performed in the benchmark.
     N: usize = 1,
     /// Timer used to track the duration of the benchmark.
-    timer: t.Timer,
+    timer: std.time.Timer,
     /// Total number of operations performed during the benchmark.
     totalOperations: usize = 0,
     /// Minimum duration recorded among all runs (initially set to the maximum possible value).
@@ -31,33 +30,23 @@ pub const Benchmark = struct {
     /// name: A string representing the benchmark's name.
     /// allocator: Memory allocator to be used.
     pub fn init(name: []const u8, allocator: std.mem.Allocator) !Benchmark {
-        var startTime: u64 = @intCast(std.time.nanoTimestamp());
-        if (startTime < 0) {
-            std.debug.warn("Failed to get start time. Defaulting to 0.\n", .{});
-            startTime = 0;
-        }
-
-        var bench = Benchmark{
+        const bench = Benchmark{
             .name = name,
             .allocator = allocator,
-            .timer = t.Timer{ .startTime = startTime },
+            .timer = std.time.Timer.start() catch return error.TimerUnsupported,
             .durations = std.ArrayList(u64).init(allocator),
-            .startTime = startTime,
         };
-        bench.timer.start();
         return bench;
     }
 
     /// Starts or restarts the benchmark timer.
     pub fn start(self: *Benchmark) void {
-        self.timer.start();
-        self.startTime = self.timer.startTime;
+        self.timer.reset();
     }
 
     /// Stop the benchmark and record the duration
     pub fn stop(self: *Benchmark) void {
-        self.timer.stop();
-        const elapsedDuration = self.timer.elapsed();
+        const elapsedDuration = self.timer.read();
         self.totalDuration += elapsedDuration;
 
         if (elapsedDuration < self.minDuration) self.minDuration = elapsedDuration;
@@ -78,7 +67,11 @@ pub const Benchmark = struct {
 
     /// Returns the elapsed time since the benchmark started.
     pub fn elapsed(self: *Benchmark) u64 {
-        return self.timer.elapsed();
+        var sum: u64 = 0;
+        for (self.durations.items) |duration| {
+            sum += duration;
+        }
+        return sum;
     }
 
     /// Sets the total number of operations performed.
@@ -113,22 +106,13 @@ pub const Benchmark = struct {
         var i = low;
 
         var j = low;
-        while (j <= high) {
+        while (j <= high) : (j += 1) {
             if (items[j] < pivot) {
-                // Manually swapping items[i] and items[j]
-                const temp = items[i];
-                items[i] = items[j];
-                items[j] = temp;
+                std.mem.swap(u64, &items[i], &items[j]);
                 i += 1;
             }
-            j += 1;
         }
-
-        // Swapping items[i] and items[high]
-        const temp = items[i];
-        items[i] = items[high];
-        items[high] = temp;
-
+        std.mem.swap(u64, &items[i], &items[high]);
         return i;
     }
 
@@ -137,10 +121,10 @@ pub const Benchmark = struct {
         // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
         var lastIndex: usize = 0;
-        if (len > 0) {
+        if (len > 1) {
             lastIndex = len - 1;
         } else {
-            std.debug.print("Cannot calculate percentiles: empty durations list\n", .{});
+            std.debug.print("Cannot calculate percentiles: recorded less than two durations\n", .{});
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
         quickSort(self.durations.items, 0, lastIndex - 1);
@@ -252,16 +236,15 @@ pub const BenchmarkResults = struct {
 /// benchResult: A pointer to BenchmarkResults to store the results.
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
     defer bench.durations.deinit();
-    const MIN_DURATION = 1_000_000; // minimum benchmark time in nanoseconds (1 millisecond)
-    const MAX_N = 10000; // maximum number of executions for the final benchmark run
-    const MAX_ITERATIONS = 10; // Define a maximum number of iterations
+    const MIN_DURATION = 1_000_000_000; // minimum benchmark time in nanoseconds (1 second)
+    const MAX_N = 65536; // maximum number of executions for the final benchmark run
+    const MAX_ITERATIONS = 16384; // Define a maximum number of iterations
 
     bench.N = 1; // initial value; will be updated...
     var duration: u64 = 0;
     var iterations: usize = 0; // Add an iterations counter
 
-    var lastProgress: u8 = 0;
-    // increase N until we've run for a sufficiently long enough time
+    // increase N until we've run for a sufficiently long time or exceeded max_iterations
     while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
         bench.reset();
 
@@ -279,23 +262,18 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
             bench.N = MAX_N;
         }
 
-        // Calculate the progress percentage
-        const pr = bench.N / MAX_N;
-        const progress = pr * 100;
-
-        // Print the progress if it's a new percentage
-        const currentProgress: u8 = @truncate(progress);
-        if (currentProgress != lastProgress) {
-            std.debug.print("Progress...({}%)\n", .{currentProgress});
-            lastProgress = currentProgress;
-        }
         iterations += 1; // Increase the iteration counter
+        duration += bench.elapsed(); // ...and duration
     }
-    // Get the elapsed time
-    duration = bench.elapsed();
+
+    // Safety first: make sure the recorded durations aren't all-zero
+    if (duration == 0) duration = 1;
 
     // Adjust N based on the actual duration achieved
     bench.N = @intCast((bench.N * MIN_DURATION) / duration);
+    // check that N doesn't go out of bounds
+    if (bench.N == 0) bench.N = 1;
+    if (bench.N > MAX_N) bench.N = MAX_N;
 
     // Now run the benchmark with the adjusted N value
     bench.reset();

@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
 
     const example_step = b.step("test_examples", "Build examples");
     // Add new examples here
-    for ([_][]const u8{ "basic", "bubble_sort" }) |example_name| {
+    for ([_][]const u8{ "basic", "bubble_sort", "sleep" }) |example_name| {
         const example = b.addTest(.{
             .name = example_name,
             .root_source_file = .{ .path = b.fmt("examples/{s}.zig", .{example_name}) },

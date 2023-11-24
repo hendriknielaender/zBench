@@ -14,7 +14,7 @@ pub const Timer = struct {
 
     pub fn stop(self: *Timer) void {
         if (self.startTime != 0) {
-            var stamp: u64 = @intCast(std.time.nanoTimestamp());
+            const stamp: u64 = @intCast(std.time.nanoTimestamp());
             self.elapsedTime = stamp - self.startTime;
         }
         self.startTime = 0;
@@ -24,7 +24,7 @@ pub const Timer = struct {
         if (self.startTime == 0) {
             return self.elapsedTime;
         } else {
-            var stamp: u64 = @intCast(std.time.nanoTimestamp());
+            const stamp: u64 = @intCast(std.time.nanoTimestamp());
             return stamp - self.startTime;
         }
     }
