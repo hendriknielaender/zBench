@@ -31,6 +31,9 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
 
+    // Add tests from the 'util' directory
+    addTestDir(b, test_step, "./util", target, b.allocator);
+
     const zbench_mod = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
 
     const example_step = b.step("test_examples", "Build examples");
@@ -56,4 +59,40 @@ pub fn build(b: *std.Build) void {
 
     const docs_step = b.step("docs", "Copy documentation artifacts to prefix path");
     docs_step.dependOn(&install_docs.step);
+}
+
+fn addTestDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const u8, target: std.zig.CrossTarget, allocator: std.mem.Allocator) void {
+    const dir = std.fs.cwd().openIterableDir(dir_path, .{}) catch return;
+    var iter = dir.iterate();
+    while (true) {
+        const optionalEntry = iter.next() catch |err| {
+            std.debug.print("Directory iteration error: {}\n", .{err});
+            continue;
+        };
+
+        if (optionalEntry == null) break; // No more entries
+
+        const entry = optionalEntry.?;
+        switch (entry.kind) {
+            .file => {
+                if (std.mem.endsWith(u8, entry.name, ".zig")) {
+                    const test_path = std.fs.path.join(allocator, &[_][]const u8{ dir_path, entry.name }) catch continue;
+
+                    // Create TestOptions struct with the test path
+                    const test_options = std.Build.TestOptions{
+                        .root_source_file = .{ .path = test_path },
+                        .target = target,
+                    };
+
+                    const test_file = b.addTest(test_options);
+                    test_step.dependOn(&test_file.step);
+                }
+            },
+            .directory => {
+                const sub_path = std.fs.path.join(allocator, &[_][]const u8{ dir_path, entry.name }) catch continue;
+                addTestDir(b, test_step, sub_path, target, allocator);
+            },
+            else => continue,
+        }
+    }
 }
