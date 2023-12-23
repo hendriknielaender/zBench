@@ -95,6 +95,8 @@ fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.built
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
+        const zbench_mod = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
+        example.addModule("zbench", zbench_mod);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }
