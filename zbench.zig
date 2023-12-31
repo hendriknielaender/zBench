@@ -41,6 +41,46 @@ pub const Benchmark = struct {
         return bench;
     }
 
+    /// RunnerT: An aggregate type (Enum/Struct/Union) that has the associated
+    /// functions `init` and `run` with the signatures
+    /// `fn (std.mem.Allocator) !Self` and `fn (*Self) !void` respectively.
+    ///
+    /// max_duration_estimate: Estimate for the total amount of time we are willing
+    /// to wait (in nanoseconds) for the benchmark to finish. The bencher may
+    /// exceed the estimate. Set this to 0 for no time-constraints.
+    ///
+    /// max_iterations: Maximum number of times the bench-runner is to be run.
+    /// The actual amount of iterations performed may be less if the benchmark time
+    /// exceeds `max_duration_estimate`.
+    pub fn runBench(
+        self: *Benchmark,
+        comptime RunnerT: type,
+        max_duration_estimate: u64,
+        max_iterations: u64,
+    ) !BenchmarkResult {
+        switch (@typeInfo(RunnerT)) {
+            .Enum, .Struct, .Union => {},
+            else => @compileError("runBench: `RunnerT` must be an Enum, Union or Struct")
+        }
+
+        self.reset();
+        var runner = try RunnerT.init(self.allocator);
+
+        while (
+                self.totalDuration < max_duration_estimate
+            and self.totalOperations < max_iterations
+        ) {
+            self.start();
+            try runner.run();
+            self.stop();
+
+            self.totalOperations += 1;
+        }
+
+        try self.prettyPrintResult();
+        @panic("TODO\n");
+    }
+
     /// Starts or restarts the benchmark timer.
     pub fn start(self: *Benchmark) void {
         self.timer.reset();
