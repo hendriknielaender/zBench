@@ -18,7 +18,7 @@ pub const Benchmark = struct {
     /// Total number of operations performed during the benchmark.
     totalOperations: usize = 0,
     /// Minimum duration recorded among all runs (initially set to the maximum possible value).
-    minDuration: u64 = 18446744073709551615,
+    minDuration: u64 = std.math.maxInt(u64),
     /// Maximum duration recorded among all runs.
     maxDuration: u64 = 0,
     /// Total duration accumulated over all runs.
@@ -142,7 +142,12 @@ pub const Benchmark = struct {
         return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
-    pub fn prettyPrint(self: Benchmark) !void {
+    pub fn prettyPrintHeader() void {
+        std.debug.print("{s:<20} {s:<12} {s}\t{s:<10} {s:<10} {s:<10} {s}\n", .{ "benchmark", "time (avg)", "(min ............. max)", "p75", "p99", "p995", "runs" });
+        std.debug.print("-----------------------------------------------------------------------------------------------------\n", .{});
+    }
+
+    pub fn prettyPrintResult(self: Benchmark) !void {
         const percentiles = self.calculatePercentiles();
 
         var p75_buffer: [128]u8 = undefined;
@@ -163,9 +168,7 @@ pub const Benchmark = struct {
         var max_buffer: [128]u8 = undefined;
         const max_str = try format.duration(max_buffer[0..], self.maxDuration);
 
-        std.debug.print("{s:<20} {s:<12} {s:<20} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "time (avg)", "(min ... max)", "p75", "p99", "p995" });
-        std.debug.print("--------------------------------------------------------------------------------------\n", .{});
-        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m) \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str });
+        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m)  \t\x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10} \x1b[90m{d}\x1b[0m\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str, self.totalOperations });
     }
 
     /// Calculate the average duration
@@ -295,5 +298,6 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     bench.setTotalOperations(bench.N);
     bench.report();
 
-    try bench.prettyPrint();
+    bench.prettyPrintHeader();
+    try bench.prettyPrintResult();
 }
