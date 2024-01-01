@@ -60,10 +60,10 @@ pub const Benchmark = struct {
     ///         fn (std.mem.Allocator) void         : Required
     ///
     ///     Aggregate (Struct/Union/Enum) with followin associated methods -
-    ///         fn init(std.mem.Allocator) !Self    : Required
-    ///         fn run(Self) void                   : Required
-    ///         fn deinit(Self) void                : Optional
-    ///         fn reset(Self) void                 : Optional
+    ///         pub fn init(std.mem.Allocator) !Self    : Required
+    ///         pub fn run(Self) void                   : Required
+    ///         pub fn deinit(Self) void                : Optional
+    ///         pub fn reset(Self) void                 : Optional
     ///
     /// NOTE:
     ///     `*Self` instead of `Self` also works for the above types.
@@ -308,4 +308,12 @@ pub const BenchmarkResult = struct {
 pub fn prettyPrintHeader() void {
     std.debug.print("{s:<20} {s:<12} {s}\t{s:<10} {s:<10} {s:<10} {s}\n", .{ "benchmark", "time (avg)", "(min ............. max)", "p75", "p99", "p995", "runs" });
     std.debug.print("-----------------------------------------------------------------------------------------------------\n", .{});
+}
+
+pub fn prettyPrintResults(results: []const BenchmarkResult, header: bool) !void {
+    if (header) {
+        prettyPrintHeader();
+    }
+
+    for (results) |res| try res.prettyPrint(false);
 }

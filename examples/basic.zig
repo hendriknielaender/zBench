@@ -13,16 +13,19 @@ fn helloWorld() []const u8 {
     return "Hello, world!";
 }
 
-fn myBenchmark(_: *zbench.Benchmark) void {
+fn myBenchRunner(_: std.mem.Allocator) void {
     _ = helloWorld();
 }
 
-test "bench test basic" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator);
-    var benchmarkResults = zbench.BenchmarkResults{
-        .results = resultsAlloc,
-    };
-    defer benchmarkResults.results.deinit();
-    try zbench.run(myBenchmark, &bench, &benchmarkResults);
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+
+    const second: u64 = 1_000_000_000;
+    const bench_iterations: u64 = 128;
+
+    var bench = try zbench.Benchmark.init(second, bench_iterations, gpa.allocator());
+    defer bench.deinit();
+
+    const bench_result = try bench.runBench(myBenchRunner, "Hello benchmark");
+    try bench_result.prettyPrint(true);
 }

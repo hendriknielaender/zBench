@@ -85,11 +85,11 @@ fn addTestsFromDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const 
 }
 
 fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
-    const example_step = b.step("test_examples", "Build examples");
+    const example_step = b.step("examples", "Build examples");
     const example_names = [_][]const u8{ "basic", "bubble_sort", "sleep" };
 
     for (example_names) |example_name| {
-        const example = b.addTest(.{
+        const example = b.addExecutable(.{
             .name = example_name,
             .root_source_file = .{ .path = b.fmt("examples/{s}.zig", .{example_name}) },
             .target = target,

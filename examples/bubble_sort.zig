@@ -3,29 +3,37 @@ const inc = @import("include");
 const zbench = @import("zbench");
 const test_allocator = std.testing.allocator;
 
-fn bubbleSort(nums: []i32) void {
-    var i: usize = nums.len - 1;
-    while (i > 0) : (i -= 1) {
-        var j: usize = 0;
-        while (j < i) : (j += 1) {
-            if (nums[j] > nums[j + 1]) {
-                std.mem.swap(i32, &nums[j], &nums[j + 1]);
+const BubbleSortRunner = struct {
+    const Self = @This();
+
+    nums: [10]i32,
+
+    pub fn init(_: std.mem.Allocator) !Self {
+        return Self{ .nums = [_]i32{ 4, 1, 3, 1, 5, 2, 6, 0, 7, 8} };
+    }
+
+    pub fn run(self: *Self) void {
+        var i: usize = self.nums.len - 1;
+        while (i > 0) : (i -= 1) {
+            var j: usize = 0;
+            while (j < i) : (j += 1) {
+                if (self.nums[j] > self.nums[j + 1]) {
+                    std.mem.swap(i32, &self.nums[j], &self.nums[j + 1]);
+                }
             }
         }
     }
-}
+};
 
-fn myBenchmark(_: *zbench.Benchmark) void {
-    var numbers = [_]i32{ 4, 1, 3, 1, 5, 2 };
-    _ = bubbleSort(&numbers);
-}
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-test "bench test bubbleSort" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var bench = try zbench.Benchmark.init("Bubble Sort Benchmark", test_allocator);
-    var benchmarkResults = zbench.BenchmarkResults{
-        .results = resultsAlloc,
-    };
-    defer benchmarkResults.results.deinit();
-    try zbench.run(myBenchmark, &bench, &benchmarkResults);
+    const second: u64 = 1_000_000_000;
+    const bench_iterations: u64 = 128;
+
+    var bench = try zbench.Benchmark.init(second, bench_iterations, gpa.allocator());
+    defer bench.deinit();
+
+    const bench_result = try bench.runBench(BubbleSortRunner, "Bubble-sort benchmark");
+    try bench_result.prettyPrint(true);
 }
