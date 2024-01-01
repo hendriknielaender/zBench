@@ -65,7 +65,7 @@ pub const Benchmark = struct {
     ///         fn deinit(Self) void                : Optional
     ///         fn reset(Self) void                 : Optional
     ///
-    /// NOTE: 
+    /// NOTE:
     ///     `*Self` instead of `Self` also works for the above types.
     ///
     ///     `reset` can be useful for increasing benchmarking speed. If it is
@@ -78,7 +78,7 @@ pub const Benchmark = struct {
         self: *Benchmark,
         comptime Runner: anytype,
         name: []const u8,
-    ) !void {
+    ) !BenchmarkResult {
         if (@TypeOf(Runner) == fn (std.mem.Allocator) void) {
             while (
                     self.total_duration < self.max_duration_limit
@@ -136,8 +136,17 @@ pub const Benchmark = struct {
             @compileError("runBench: `Runner` must be an Enum, Union or Struct, or a standalone function with signature `fn (std.mem.Allocator) void`");
         }
 
-        try self.prettyPrintResult(name);
+        const ret =  BenchmarkResult {
+            .name = name,
+            .percs = self.calculatePercentiles(),
+            .avg_duration = self.calculateAverage(),
+            .min_duration = self.min_duration,
+            .max_duration = self.max_duration,
+            .total_operations = self.total_operations,
+        };
+
         self.reset();
+        return ret;
     }
 
     /// Starts or restarts the benchmark timer.
@@ -186,12 +195,6 @@ pub const Benchmark = struct {
         std.debug.print("Total operations: {}\n", .{self.total_operations});
     }
 
-    pub const Percentiles = struct {
-        p75: u64,
-        p99: u64,
-        p995: u64,
-    };
-
     pub fn quickSort(items: []u64, low: usize, high: usize) void {
         if (low < high) {
             const pivotIndex = partition(items, low, high);
@@ -225,7 +228,6 @@ pub const Benchmark = struct {
         if (len > 1) {
             lastIndex = len - 1;
         } else {
-            std.debug.print("Cannot calculate percentiles: recorded less than two durations\n", .{});
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
         quickSort(self.durations.items, 0, lastIndex - 1);
@@ -238,36 +240,7 @@ pub const Benchmark = struct {
         const p99 = self.durations.items[p99Index];
         const p995 = self.durations.items[p995Index];
 
-        return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
-    }
-
-    pub fn prettyPrintHeader() void {
-        std.debug.print("{s:<20} {s:<12} {s}\t{s:<10} {s:<10} {s:<10} {s}\n", .{ "benchmark", "time (avg)", "(min ............. max)", "p75", "p99", "p995", "runs" });
-        std.debug.print("-----------------------------------------------------------------------------------------------------\n", .{});
-    }
-
-    pub fn prettyPrintResult(self: Benchmark, name: []const u8) !void {
-        const percentiles = self.calculatePercentiles();
-
-        var p75_buffer: [128]u8 = undefined;
-        const p75_str = try format.duration(p75_buffer[0..], percentiles.p75);
-
-        var p99_buffer: [128]u8 = undefined;
-        const p99_str = try format.duration(p99_buffer[0..], percentiles.p99);
-
-        var p995_buffer: [128]u8 = undefined;
-        const p995_str = try format.duration(p995_buffer[0..], percentiles.p995);
-
-        var avg_buffer: [128]u8 = undefined;
-        const avg_str = try format.duration(avg_buffer[0..], self.calculateAverage());
-
-        var min_buffer: [128]u8 = undefined;
-        const min_str = try format.duration(min_buffer[0..], self.min_duration);
-
-        var max_buffer: [128]u8 = undefined;
-        const max_str = try format.duration(max_buffer[0..], self.max_duration);
-
-        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m)  \t\x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10} \x1b[90m{d}\x1b[0m\n", .{ name, avg_str, min_str, max_str, p75_str, p99_str, p995_str, self.total_operations });
+        return Percentiles { .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
     /// Calculate the average duration
@@ -289,116 +262,50 @@ pub const Benchmark = struct {
     pub fn deinit(self: Benchmark) void { self.durations.deinit(); }
 };
 
+pub const Percentiles = struct {
+    p75: u64,
+    p99: u64,
+    p995: u64,
+};
+
 /// BenchFunc is a function type that represents a benchmark function.
 /// It takes a pointer to a Benchmark object.
 pub const BenchFunc = fn (*Benchmark) void;
 
-/// BenchmarkResult stores the result of a single benchmark.
-/// It includes the name and the total duration of the benchmark.
+/// BenchmarkResult stores the resulting computed metrics/statistics from a benchmark
 pub const BenchmarkResult = struct {
-    /// Name of the benchmark.
     name: []const u8,
-    /// Total duration of the benchmark in nanoseconds.
-    duration: u64,
-};
+    percs: Percentiles,
+    avg_duration: usize,
+    min_duration: usize,
+    max_duration: usize,
+    total_operations: usize,
 
-/// BenchmarkResults acts as a container for multiple benchmark results.
-/// It provides functionality to format and print these results.
-pub const BenchmarkResults = struct {
-    /// A dynamic list of BenchmarkResult objects.
-    results: std.ArrayList(BenchmarkResult),
+    pub fn prettyPrint(self: BenchmarkResult, header: bool) !void {
+        var p75_buffer: [128]u8 = undefined;
+        const p75_str = try format.duration(p75_buffer[0..], self.percs.p75);
 
-    /// Determines the color representation based on the duration of the benchmark.
-    /// duration: The duration to evaluate.
-    pub fn getColor(self: *const BenchmarkResults, duration: u64) c.Color {
-        const max_duration = @max(self.results.items[0].duration, self.results.items[self.results.items.len - 1].duration);
-        const min_duration = @min(self.results.items[0].duration, self.results.items[self.results.items.len - 1].duration);
+        var p99_buffer: [128]u8 = undefined;
+        const p99_str = try format.duration(p99_buffer[0..], self.percs.p99);
 
-        if (duration <= min_duration) return c.Color.green;
-        if (duration >= max_duration) return c.Color.red;
+        var p995_buffer: [128]u8 = undefined;
+        const p995_str = try format.duration(p995_buffer[0..], self.percs.p995);
 
-        const prop = (duration - min_duration) * 100 / (max_duration - min_duration + 1);
+        var avg_buffer: [128]u8 = undefined;
+        const avg_str = try format.duration(avg_buffer[0..], self.avg_duration);
 
-        if (prop < 50) return c.Color.green;
-        if (prop < 75) return c.Color.yellow;
+        var min_buffer: [128]u8 = undefined;
+        const min_str = try format.duration(min_buffer[0..], self.min_duration);
 
-        return c.Color.red;
-    }
+        var max_buffer: [128]u8 = undefined;
+        const max_str = try format.duration(max_buffer[0..], self.max_duration);
 
-    /// Formats and prints the benchmark results in a readable format.
-    pub fn prettyPrint(self: BenchmarkResults) !void {
-        const stdout = std.io.getStdOut().writer();
-        std.debug.print("--------------------------------------------------------------------------------------\n", .{});
-
-        for (self.results.items) |result| {
-            try stdout.print("{s}", .{result.name});
-        }
+        if (header) prettyPrintHeader(); 
+        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m)  \t\x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10} \x1b[90m{d}\x1b[0m\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str, self.total_operations });
     }
 };
 
-/// Executes a benchmark function within the context of a given Benchmark object.
-/// func: The benchmark function to be executed.
-/// bench: A pointer to a Benchmark object for tracking the benchmark.
-/// benchResult: A pointer to BenchmarkResults to store the results.
-pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
-    defer bench.durations.deinit();
-    const MIN_DURATION = 1_000_000_000; // minimum benchmark time in nanoseconds (1 second)
-    const MAX_N = 65536; // maximum number of executions for the final benchmark run
-    const MAX_ITERATIONS = 16384; // Define a maximum number of iterations
-
-    bench.N = 1; // initial value; will be updated...
-    var duration: u64 = 0;
-    var iterations: usize = 0; // Add an iterations counter
-
-    // increase N until we've run for a sufficiently long time or exceeded max_iterations
-    while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
-        bench.reset();
-
-        bench.start();
-        var j: usize = 0;
-        while (j < bench.N) : (j += 1) {
-            func(bench);
-        }
-
-        bench.stop();
-        // double N for next iteration
-        if (bench.N < MAX_N / 2) {
-            bench.N *= 2;
-        } else {
-            bench.N = MAX_N;
-        }
-
-        iterations += 1; // Increase the iteration counter
-        duration += bench.elapsed(); // ...and duration
-    }
-
-    // Safety first: make sure the recorded durations aren't all-zero
-    if (duration == 0) duration = 1;
-
-    // Adjust N based on the actual duration achieved
-    bench.N = @intCast((bench.N * MIN_DURATION) / duration);
-    // check that N doesn't go out of bounds
-    if (bench.N == 0) bench.N = 1;
-    if (bench.N > MAX_N) bench.N = MAX_N;
-
-    // Now run the benchmark with the adjusted N value
-    bench.reset();
-    var j: usize = 0;
-    while (j < bench.N) : (j += 1) {
-        bench.start();
-        func(bench);
-        bench.stop();
-    }
-
-    const elapsed = bench.elapsed();
-    try benchResult.results.append(BenchmarkResult{
-        .name = bench.name,
-        .duration = elapsed,
-    });
-
-    bench.setTotalOperations(bench.N);
-    bench.report();
-
-    bench.prettyPrintHeader();
-    try bench.prettyPrintResult();
+pub fn prettyPrintHeader() void {
+    std.debug.print("{s:<20} {s:<12} {s}\t{s:<10} {s:<10} {s:<10} {s}\n", .{ "benchmark", "time (avg)", "(min ............. max)", "p75", "p99", "p995", "runs" });
+    std.debug.print("-----------------------------------------------------------------------------------------------------\n", .{});
 }
