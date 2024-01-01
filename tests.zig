@@ -5,18 +5,18 @@ const print = std.debug.print;
 const Benchmark = @import("./zbench.zig").Benchmark;
 
 test "benchmark runBench with standalone function" {
-    var bench = try Benchmark.init("whatever", test_alloc);
+    var bench = try Benchmark.init(1000, 128, test_alloc);
     defer bench.deinit();
 
     const Nested = struct {
         pub fn run(_: std.mem.Allocator) void {}
     };
 
-    _ = try bench.runBench(Nested.run, 1000, 128);
+    _ = try bench.runBench(Nested.run, "test_bench");
 }
 
 test "benchmark runBench with enum runner with init and run" {
-    var bench = try Benchmark.init("whatever", test_alloc);
+    var bench = try Benchmark.init(1000, 128, test_alloc);
     defer bench.deinit();
 
     const Runner = enum {
@@ -28,11 +28,11 @@ test "benchmark runBench with enum runner with init and run" {
         pub fn run(_: *Self) void {}
     };
 
-    _ = try bench.runBench(Runner, 1000, 128);
+    _ = try bench.runBench(Runner, "test_bench");
 }
 
 test "benchmark runBench with struct runner with init, run and deinit" {
-    var bench = try Benchmark.init("whatever", test_alloc);
+    var bench = try Benchmark.init(1000, 128, test_alloc);
     defer bench.deinit();
 
     const Runner = struct {
@@ -55,11 +55,11 @@ test "benchmark runBench with struct runner with init, run and deinit" {
         pub fn deinit(self: Self) void { self.alloc.free(self.items); }
     };
 
-    _ = try bench.runBench(Runner, 1000, 128);
+    _ = try bench.runBench(Runner, "test_bench");
 }
 
 test "benchmark runBench with complete bench-runner struct" {
-    var bench = try Benchmark.init("whatever", test_alloc);
+    var bench = try Benchmark.init(1000, 128, test_alloc);
     defer bench.deinit();
 
     const Runner = struct {
@@ -84,5 +84,5 @@ test "benchmark runBench with complete bench-runner struct" {
         }
     };
 
-    _ = try bench.runBench(Runner, 1000, 128);
+    _ = try bench.runBench(Runner, "test_bench");
 }

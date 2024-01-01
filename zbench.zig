@@ -9,31 +9,45 @@ const format = @import("./util/format.zig");
 /// Benchmark is a type representing a single benchmark session.
 /// It provides metrics and utilities for performance measurement.
 pub const Benchmark = struct {
-    /// Name of the benchmark.
-    name: []const u8,
-    /// Number of iterations to be performed in the benchmark.
-    N: usize = 1,
     /// Timer used to track the duration of the benchmark.
     timer: std.time.Timer,
     /// Total number of operations performed during the benchmark.
-    totalOperations: usize = 0,
+    total_operations: usize = 0,
     /// Minimum duration recorded among all runs (initially set to the maximum possible value).
-    minDuration: u64 = std.math.maxInt(u64),
+    min_duration: u64 = std.math.maxInt(u64),
     /// Maximum duration recorded among all runs.
-    maxDuration: u64 = 0,
+    max_duration: u64 = 0,
+    /// Maximum duration (approx) we are willing to wait for a benchmark
+    max_duration_limit: u64,
+    /// Maximum amount of runs to repeat for any given benchmark
+    max_operations: u64,
     /// Total duration accumulated over all runs.
-    totalDuration: u64 = 0,
+    total_duration: u64 = 0,
     /// A dynamic list storing the duration of each run.
     durations: std.ArrayList(u64),
     /// Memory allocator used by the benchmark.
     allocator: std.mem.Allocator,
 
     /// Initializes a new Benchmark instance.
-    /// name: A string representing the benchmark's name.
+    ///
+    /// max_duration_limit: Max amount of time (in nanoseconds) we are willing
+    /// to wait for any given invocation of `runBench`. Set this to a high number
+    /// if you don't want time restrictions (ie. std.math.maxInt(u64)). NOTE: This
+    /// is only an estimate and bench-runs may exceed the limit slightly.
+    ///
+    /// max_opererations: Maximum amount of benchmark-runs performed for any
+    /// given invocation of `runBench`. This may be lower if the bench-time
+    /// exceeds max_duration_estimate.
+    ///
     /// allocator: Memory allocator to be used.
-    pub fn init(name: []const u8, allocator: std.mem.Allocator) !Benchmark {
+    pub fn init(
+        max_duration_limit: u64,
+        max_operations: u64,
+        allocator: std.mem.Allocator,
+    ) !Benchmark {
         const bench = Benchmark{
-            .name = name,
+            .max_duration_limit = max_duration_limit,
+            .max_operations = max_operations,
             .allocator = allocator,
             .timer = std.time.Timer.start() catch return error.TimerUnsupported,
             .durations = std.ArrayList(u64).init(allocator),
@@ -41,38 +55,40 @@ pub const Benchmark = struct {
         return bench;
     }
 
-    /// RunnerT: Must be one of either -
+    /// Runner: Must be one of either -
+    ///     Standalone function with following signature/function type -
+    ///         fn (std.mem.Allocator) void         : Required
+    ///
     ///     Aggregate (Struct/Union/Enum) with followin associated methods -
     ///         fn init(std.mem.Allocator) !Self    : Required
-    ///         fn run(Self | *Self) void           : Required
-    ///         fn deinit(Self | *Self) void        : Optional
-    ///         fn reset(Self | *Self) void         : Optional
+    ///         fn run(Self) void                   : Required
+    ///         fn deinit(Self) void                : Optional
+    ///         fn reset(Self) void                 : Optional
     ///
-    ///     Standalone function of type fn (std.mem.Allocator) void
+    /// NOTE: 
+    ///     `*Self` instead of `Self` also works for the above types.
     ///
-    /// max_duration_estimate: Estimate for the total amount of time we are willing
-    /// to wait (in nanoseconds) for the benchmark to finish. The bencher may
-    /// exceed the estimate. Set this to 0 for no time-constraints.
+    ///     `reset` can be useful for increasing benchmarking speed. If it is
+    ///     not supplied, the runner instance is "deinited" and "inited" between
+    ///     every run.
     ///
-    /// max_iterations: Maximum number of times the bench-runner is to be run.
-    /// The actual amount of iterations performed may be less if the benchmark time
-    /// exceeds `max_duration_estimate`.
+    ///     If the above restrictions aren't matched exactly you may get strange
+    ///     compilation errors that can be hard to debug!
     pub fn runBench(
         self: *Benchmark,
         comptime Runner: anytype,
-        max_duration_estimate: u64,
-        max_iterations: u64
+        name: []const u8,
     ) !void {
         if (@TypeOf(Runner) == fn (std.mem.Allocator) void) {
             while (
-                    self.totalDuration < max_duration_estimate
-                and self.totalOperations < max_iterations
+                    self.total_duration < self.max_duration_limit
+                and self.total_operations < self.max_operations
             ) {
                 self.start();
                 Runner(self.allocator);
                 self.stop();
 
-                self.totalOperations += 1;
+                self.total_operations += 1;
             }
         } else if (@TypeOf(Runner) == type) {
             const decls = switch (@typeInfo(Runner)) {
@@ -95,14 +111,14 @@ pub const Benchmark = struct {
 
             var run_instance = try Runner.init(self.allocator);
             while (
-                    self.totalDuration < max_duration_estimate
-                and self.totalOperations < max_iterations
+                    self.total_duration < self.max_duration_limit
+                and self.total_operations < self.max_operations
             ) {
                 self.start();
                 run_instance.run();
                 self.stop();
 
-                self.totalOperations += 1;
+                self.total_operations += 1;
 
                 if (has_reset) {
                     run_instance.reset();
@@ -117,10 +133,10 @@ pub const Benchmark = struct {
             if (has_deinit) run_instance.deinit();
         } else {
             // Not sure if it's actually possible to hit this branch?
-            @compileError("runBench: `Runner` must be an Enum, Union or Struct, or a standalone function");
+            @compileError("runBench: `Runner` must be an Enum, Union or Struct, or a standalone function with signature `fn (std.mem.Allocator) void`");
         }
 
-        try self.prettyPrintResult();
+        try self.prettyPrintResult(name);
         self.reset();
     }
 
@@ -132,20 +148,20 @@ pub const Benchmark = struct {
     /// Stop the benchmark and record the duration
     pub fn stop(self: *Benchmark) void {
         const elapsedDuration = self.timer.read();
-        self.totalDuration += elapsedDuration;
+        self.total_duration += elapsedDuration;
 
-        if (elapsedDuration < self.minDuration) self.minDuration = elapsedDuration;
-        if (elapsedDuration > self.maxDuration) self.maxDuration = elapsedDuration;
+        if (elapsedDuration < self.min_duration) self.min_duration = elapsedDuration;
+        if (elapsedDuration > self.max_duration) self.max_duration = elapsedDuration;
 
         self.durations.append(elapsedDuration) catch unreachable;
     }
 
     /// Reset the benchmark
     pub fn reset(self: *Benchmark) void {
-        self.totalOperations = 0;
-        self.minDuration = 18446744073709551615;
-        self.maxDuration = 0;
-        self.totalDuration = 0;
+        self.total_operations = 0;
+        self.min_duration = 18446744073709551615;
+        self.max_duration = 0;
+        self.total_duration = 0;
         self.durations.deinit();
         self.durations = std.ArrayList(u64).init(self.allocator);
     }
@@ -162,12 +178,12 @@ pub const Benchmark = struct {
     /// Sets the total number of operations performed.
     /// ops: Number of operations.
     pub fn setTotalOperations(self: *Benchmark, ops: usize) void {
-        self.totalOperations = ops;
+        self.total_operations = ops;
     }
 
     /// Prints a report of total operations performed during the benchmark.
     pub fn report(self: *Benchmark) void {
-        std.debug.print("Total operations: {}\n", .{self.totalOperations});
+        std.debug.print("Total operations: {}\n", .{self.total_operations});
     }
 
     pub const Percentiles = struct {
@@ -230,7 +246,7 @@ pub const Benchmark = struct {
         std.debug.print("-----------------------------------------------------------------------------------------------------\n", .{});
     }
 
-    pub fn prettyPrintResult(self: Benchmark) !void {
+    pub fn prettyPrintResult(self: Benchmark, name: []const u8) !void {
         const percentiles = self.calculatePercentiles();
 
         var p75_buffer: [128]u8 = undefined;
@@ -246,12 +262,12 @@ pub const Benchmark = struct {
         const avg_str = try format.duration(avg_buffer[0..], self.calculateAverage());
 
         var min_buffer: [128]u8 = undefined;
-        const min_str = try format.duration(min_buffer[0..], self.minDuration);
+        const min_str = try format.duration(min_buffer[0..], self.min_duration);
 
         var max_buffer: [128]u8 = undefined;
-        const max_str = try format.duration(max_buffer[0..], self.maxDuration);
+        const max_str = try format.duration(max_buffer[0..], self.max_duration);
 
-        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m)  \t\x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10} \x1b[90m{d}\x1b[0m\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str, self.totalOperations });
+        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m)  \t\x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10} \x1b[90m{d}\x1b[0m\n", .{ name, avg_str, min_str, max_str, p75_str, p99_str, p995_str, self.total_operations });
     }
 
     /// Calculate the average duration
