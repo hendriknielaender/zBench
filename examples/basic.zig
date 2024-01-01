@@ -26,6 +26,6 @@ pub fn main() !void {
     var bench = try zbench.Benchmark.init(second, bench_iterations, gpa.allocator());
     defer bench.deinit();
 
-    const bench_result = try bench.runBench(myBenchRunner, "Hello benchmark");
+    const bench_result = try bench.runBench(myBenchRunner, "Hello bench");
     try bench_result.prettyPrint(true);
 }

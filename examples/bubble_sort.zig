@@ -34,6 +34,6 @@ pub fn main() !void {
     var bench = try zbench.Benchmark.init(second, bench_iterations, gpa.allocator());
     defer bench.deinit();
 
-    const bench_result = try bench.runBench(BubbleSortRunner, "Bubble-sort benchmark");
+    const bench_result = try bench.runBench(BubbleSortRunner, "Bubble-sort bench");
     try bench_result.prettyPrint(true);
 }
