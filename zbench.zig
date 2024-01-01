@@ -41,9 +41,14 @@ pub const Benchmark = struct {
         return bench;
     }
 
-    /// RunnerT: An aggregate type (Enum/Struct/Union) that has the associated
-    /// functions `init` and `run` with the signatures
-    /// `fn (std.mem.Allocator) !Self` and `fn (*Self) !void` respectively.
+    /// RunnerT: Must be one of either -
+    ///     Aggregate (Struct/Union/Enum) with followin associated methods -
+    ///         fn init(std.mem.Allocator) !Self    : Required
+    ///         fn run(Self | *Self) void           : Required
+    ///         fn deinit(Self | *Self) void        : Optional
+    ///         fn reset(Self | *Self) void         : Optional
+    ///
+    ///     Standalone function of type fn (std.mem.Allocator) void
     ///
     /// max_duration_estimate: Estimate for the total amount of time we are willing
     /// to wait (in nanoseconds) for the benchmark to finish. The bencher may
@@ -54,31 +59,69 @@ pub const Benchmark = struct {
     /// exceeds `max_duration_estimate`.
     pub fn runBench(
         self: *Benchmark,
-        comptime RunnerT: type,
+        comptime Runner: anytype,
         max_duration_estimate: u64,
-        max_iterations: u64,
-    ) !BenchmarkResult {
-        switch (@typeInfo(RunnerT)) {
-            .Enum, .Struct, .Union => {},
-            else => @compileError("runBench: `RunnerT` must be an Enum, Union or Struct")
-        }
+        max_iterations: u64
+    ) !void {
+        if (@TypeOf(Runner) == fn (std.mem.Allocator) void) {
+            while (
+                    self.totalDuration < max_duration_estimate
+                and self.totalOperations < max_iterations
+            ) {
+                self.start();
+                Runner(self.allocator);
+                self.stop();
 
-        self.reset();
-        var runner = try RunnerT.init(self.allocator);
+                self.totalOperations += 1;
+            }
+        } else if (@TypeOf(Runner) == type) {
+            const decls = switch (@typeInfo(Runner)) {
+                .Struct =>  |agr| agr.decls,
+                .Union =>   |agr| agr.decls,
+                .Enum =>    |agr| agr.decls,
 
-        while (
-                self.totalDuration < max_duration_estimate
-            and self.totalOperations < max_iterations
-        ) {
-            self.start();
-            try runner.run();
-            self.stop();
+                else => @compileError("runBench: `Runner` must be an Enum, Union or Struct, or a standalone function")
+            };
 
-            self.totalOperations += 1;
+            comptime var has_reset = false;
+            comptime var has_deinit = false;
+            comptime for (decls) |dec| {
+                if (std.mem.eql(u8, dec.name, "reset")) {
+                    has_reset = true;
+                } else if (std.mem.eql(u8, dec.name, "deinit")) {
+                    has_deinit = true;
+                }
+            };
+
+            var run_instance = try Runner.init(self.allocator);
+            while (
+                    self.totalDuration < max_duration_estimate
+                and self.totalOperations < max_iterations
+            ) {
+                self.start();
+                run_instance.run();
+                self.stop();
+
+                self.totalOperations += 1;
+
+                if (has_reset) {
+                    run_instance.reset();
+                    continue;
+                } else if (has_deinit) {
+                    run_instance.deinit();
+                }
+
+                run_instance = try Runner.init(self.allocator);
+            }
+
+            if (has_deinit) run_instance.deinit();
+        } else {
+            // Not sure if it's actually possible to hit this branch?
+            @compileError("runBench: `Runner` must be an Enum, Union or Struct, or a standalone function");
         }
 
         try self.prettyPrintResult();
-        @panic("TODO\n");
+        self.reset();
     }
 
     /// Starts or restarts the benchmark timer.
@@ -226,6 +269,8 @@ pub const Benchmark = struct {
 
         return avg;
     }
+
+    pub fn deinit(self: Benchmark) void { self.durations.deinit(); }
 };
 
 /// BenchFunc is a function type that represents a benchmark function.
