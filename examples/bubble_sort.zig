@@ -1,7 +1,6 @@
 const std = @import("std");
 const inc = @import("include");
 const zbench = @import("zbench");
-const test_allocator = std.testing.allocator;
 
 const BubbleSortRunner = struct {
     const Self = @This();

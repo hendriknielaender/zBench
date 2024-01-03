@@ -1,6 +1,5 @@
 const std = @import("std");
 const zbench = @import("zbench");
-const test_allocator = std.testing.allocator;
 
 fn helloWorld() []const u8 {
     var result: usize = 0;
