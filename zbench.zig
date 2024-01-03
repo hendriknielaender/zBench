@@ -260,17 +260,23 @@ pub const Benchmark = struct {
         return avg;
     }
 
-    /// Calculate the standard deviation of the durationn
-    // FIXME: We are doing integer division, roots and unsafe casting
+    /// Calculate the standard deviation of the durations
+    // NOTE: We are doing integer division, roots and unsafe casting..
+    // however it's very unlikely to overflow here, as this would
+    // only happen if the duration variance is over 514 years, and it's reasonable
+    // to assume no user will ever sit around and wait that for such a benchmark
+    // to complete, to then be able to calculate its standard deviation..
     pub fn calculateStd(self: Benchmark) u64 {
         const avg = self.calculateAverage();
-        var nstd: u64 = 0;
+        var nvar: u64 = 0;
         for (self.durations.items) |dur| {
-            const d: i64 = @bitCast(dur); const a: i64 = @bitCast(avg);
-            nstd += @bitCast((d - a)*(d - a));
+            const d: i64 = @bitCast(dur);
+            const a: i64 = @bitCast(avg);
+
+            nvar += @bitCast((d - a)*(d - a));
         }
 
-        return std.math.sqrt(nstd) / (self.durations.items.len - 1);
+        return std.math.sqrt(nvar) / (self.durations.items.len - 1);
     }
 
     pub fn deinit(self: Benchmark) void { self.durations.deinit(); }
@@ -306,27 +312,28 @@ pub const BenchmarkResult = struct {
         var p995_buffer: [128]u8 = undefined;
         const p995_str = try format.duration(p995_buffer[0..], self.percs.p995);
 
-        var avg_buffer: [128]u8 = undefined;
-        const avg_str = try format.duration(avg_buffer[0..], self.avg_duration);
+        var avg_std_buffer: [128]u8 = undefined;
+        var avg_std_offset = (try format.duration(avg_std_buffer[0..], self.avg_duration)).len;
+        avg_std_offset += (try std.fmt.bufPrint(avg_std_buffer[avg_std_offset..], " ± ", .{})).len;
+        avg_std_offset += (try format.duration(avg_std_buffer[avg_std_offset..], self.std_duration)).len;
 
-        var std_buffer: [128]u8 = undefined;
-        const std_str = try format.duration(std_buffer[0..], self.std_duration);
+        // This looks quite ugly, maybe there's a better way to do all this?
+        var min_max_buffer: [128]u8 = undefined;
+        min_max_buffer[0] = '(';
+        var min_max_offset = (try format.duration(min_max_buffer[1..], self.min_duration)).len + 1;
+        min_max_offset += (try std.fmt.bufPrint(min_max_buffer[min_max_offset..], " ... ", .{})).len;
+        min_max_offset += (try format.duration(min_max_buffer[min_max_offset..], self.max_duration)).len;
+        min_max_buffer[min_max_offset] = ')';
+        min_max_offset += 1;
 
-        var min_buffer: [128]u8 = undefined;
-        const min_str = try format.duration(min_buffer[0..], self.min_duration);
-
-        var max_buffer: [128]u8 = undefined;
-        const max_str = try format.duration(max_buffer[0..], self.max_duration);
-
-        // TODO: Need to merge together metrics so that spacing actually works
         if (header) prettyPrintHeader();
-        std.debug.print("{s:<25} \x1b[90m{d:<8}\x1b[0m \x1b[33m{s} ± \x1b[33m{s:<12} \x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m){s:<10} \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\n", .{ self.name, self.total_operations, avg_str, std_str, min_str, max_str,"", p75_str, p99_str, p995_str});
+        std.debug.print("{s:<25} \x1b[90m{d:<8} \x1b[33m{s:<20} \x1b[94m{s:<30} \x1b[90m{s:<10} \x1b[90m{s:<10} \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, self.total_operations, avg_std_buffer[0..avg_std_offset], min_max_buffer[0..min_max_offset], p75_str, p99_str, p995_str});
     }
 };
 
 pub fn prettyPrintHeader() void {
-    std.debug.print("{s:<25} {s:<8} {s} ± {s:<12}{s}{s:<10} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg)", "σ", "(min ............. max)", "", "p75", "p99", "p995"});
-    std.debug.print("----------------------------------------------------------------------------------------------------------------------------\n", .{});
+    std.debug.print("{s:<25} {s:<8} {s:<20} {s:<30} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg ± σ)", "(min ............. max)", "p75", "p99", "p995"});
+    std.debug.print("---------------------------------------------------------------------------------------------------------------------\n", .{});
 }
 
 pub fn prettyPrintResults(results: []const BenchmarkResult, header: bool) !void {
