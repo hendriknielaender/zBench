@@ -16,6 +16,30 @@ fn myBenchRunner(_: std.mem.Allocator) void {
     _ = helloWorld();
 }
 
+const StructRunner = struct {
+    const Self = @This();
+
+    list: std.ArrayList(usize),
+    alloc: std.mem.Allocator,
+
+    pub fn init(alloc: std.mem.Allocator) !Self {
+        return Self {
+            .list = try std.ArrayList(usize).initCapacity(alloc, 512),
+            .alloc = alloc,
+        };
+    }
+
+    pub fn run(self: *Self) void {
+        for (0..512) |i| self.list.append(i) catch @panic("Append failed!");
+    }
+
+    pub fn reset(self: *Self) void {
+        self.list.clearRetainingCapacity();
+    }
+
+    pub fn deinit(self: Self) void { self.list.deinit(); }
+};
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
@@ -25,6 +49,6 @@ pub fn main() !void {
     var bench = try zbench.Benchmark.init(second, bench_iterations, gpa.allocator());
     defer bench.deinit();
 
-    const bench_result = try bench.runBench(myBenchRunner, "Hello bench");
+    const bench_result = try bench.run(StructRunner, "ArrayList append");
     try bench_result.prettyPrint(true);
 }

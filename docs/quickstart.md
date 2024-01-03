@@ -15,24 +15,24 @@ Declare zbench as a dependency and add it to your `build.zig.zon`. Replace `<COM
 Import zbench in your Zig code and create a benchmark function:
 
 ```zig
+const std = @import("std");
 const zbench = @import("zbench");
 
-fn benchmarkMyFunction(_: *zbench.Benchmark) void {
-    // Benchmark code here
+fn myBenchRunner(_: std.mem.Allocator) void {
+    // Code to benchmark here
 }
-```
 
-Run the benchmark in a test:
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-```zig
-test "bench test" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator);
-    var benchmarkResults = zbench.BenchmarkResults{
-        .results = resultsAlloc,
-    };
-    defer benchmarkResults.results.deinit();
-    try zbench.run(myBenchmark, &bench, &benchmarkResults);
+    const second: u64 = 1_000_000_000;
+    const bench_iterations: u64 = 128;
+
+    var bench = try zbench.Benchmark.init(second, bench_iterations, gpa.allocator());
+    defer bench.deinit();
+
+    const bench_result = try bench.run(myBenchRunner, "Hello bench");
+    try bench_result.prettyPrint(true);
 }
 ```
 

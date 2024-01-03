@@ -5,7 +5,7 @@ const expectEq = std.testing.expectEqual;
 
 const Benchmark = @import("./zbench.zig").Benchmark;
 
-test "benchmark runBench with standalone function" {
+test "benchmark run with standalone function" {
     const runs: usize = 128;
     var bench = try Benchmark.init(std.math.maxInt(u64), runs, test_alloc);
     defer bench.deinit();
@@ -14,7 +14,7 @@ test "benchmark runBench with standalone function" {
         pub fn run(_: std.mem.Allocator) void {}
     };
 
-    const res = try bench.runBench(Nested.run, "test_bench");
+    const res = try bench.run(Nested.run, "test_bench");
 
     // We set no time-limit, so it should perform all the runs requested
     try expectEq(runs, res.total_operations);
@@ -34,7 +34,7 @@ test "benchmark runBench with standalone function" {
 }
 
 // NOTE: The above four tests are purely testing the metaprogramming and not any actual values
-test "benchmark runBench with enum runner with init and run" {
+test "benchmark run with enum runner with init and run" {
     const runs: usize = 128;
     var bench = try Benchmark.init(std.math.maxInt(u64), runs, test_alloc);
     defer bench.deinit();
@@ -48,12 +48,12 @@ test "benchmark runBench with enum runner with init and run" {
         pub fn run(_: *Self) void {}
     };
 
-    const res = try bench.runBench(Runner, "test_bench");
+    const res = try bench.run(Runner, "test_bench");
 
     try expectEq(runs, res.total_operations);
 }
 
-test "benchmark runBench with struct runner with init, run and deinit" {
+test "benchmark run with struct runner with init, run and deinit" {
     const runs: usize = 128;
     var bench = try Benchmark.init(std.math.maxInt(u64), runs, test_alloc);
     defer bench.deinit();
@@ -80,17 +80,17 @@ test "benchmark runBench with struct runner with init, run and deinit" {
         pub fn deinit(self: Self) void { self.alloc.free(self.items); }
     };
 
-    const res = try bench.runBench(Runner, "test_bench");
+    const res = try bench.run(Runner, "test_bench");
 
     try expectEq(runs, res.total_operations);
 
     // The runner should have been initialised as many times as there were runs, plus 1
     // NOTE: Although ideally it should be initialised exactly as many times as runs, it's
-    // just the metaprogramming in `runBench` gets more akward if we try to make that happen
+    // just the metaprogramming in `run` gets more akward if we try to make that happen
     try expectEq(runs + 1, Runner.init_count);
 }
 
-test "benchmark runBench with complete bench-runner struct" {
+test "benchmark run with complete bench-runner struct" {
     const runs: usize = 128;
     var bench = try Benchmark.init(std.math.maxInt(u64), runs, test_alloc);
     defer bench.deinit();
@@ -123,7 +123,7 @@ test "benchmark runBench with complete bench-runner struct" {
         }
     };
 
-    const res = try bench.runBench(Runner, "test_bench");
+    const res = try bench.run(Runner, "test_bench");
     try expectEq(runs, res.total_operations);
 
     // Since a reset function was provided the runner should only be inited once

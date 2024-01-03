@@ -75,7 +75,7 @@ pub fn main() !void {
 
     zbench.prettyPrintHeader();
     inline for (runners) |Runner|
-        try (try bench.runBench(Runner, Runner.name)).prettyPrint(false);
+        try (try bench.run(Runner, Runner.name)).prettyPrint(false);
 }
 
 // Below lies a simple (and unfinished) doubly linked-list implementation

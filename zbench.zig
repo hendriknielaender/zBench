@@ -31,12 +31,12 @@ pub const Benchmark = struct {
     /// Initializes a new Benchmark instance.
     ///
     /// max_duration_limit: Max amount of time (in nanoseconds) we are willing
-    /// to wait for any given invocation of `runBench`. Set this to a high number
+    /// to wait for any given invocation of `run`. Set this to a high number
     /// if you don't want time restrictions (ie. std.math.maxInt(u64)). NOTE: This
     /// is only an estimate and bench-runs may exceed the limit slightly.
     ///
     /// max_opererations: Maximum amount of benchmark-runs performed for any
-    /// given invocation of `runBench`. This may be lower if the bench-time
+    /// given invocation of `run`. This may be lower if the bench-time
     /// exceeds max_duration_estimate.
     ///
     /// allocator: Memory allocator to be used.
@@ -57,7 +57,7 @@ pub const Benchmark = struct {
 
     /// Runner: Must be one of either -
     ///     Standalone function with following signature/function type -
-    ///         fn (std.mem.Allocator) void         : Required
+    ///         fn (std.mem.Allocator) void             : Required
     ///
     ///     Aggregate (Struct/Union/Enum) with followin associated methods -
     ///         pub fn init(std.mem.Allocator) !Self    : Required
@@ -74,7 +74,7 @@ pub const Benchmark = struct {
     ///
     ///     If the above restrictions aren't matched exactly you may get strange
     ///     compilation errors that can be hard to debug!
-    pub fn runBench(
+    pub fn run(
         self: *Benchmark,
         comptime Runner: anytype,
         name: []const u8,
@@ -100,7 +100,7 @@ pub const Benchmark = struct {
                 .Union =>   |agr| agr.decls,
                 .Enum =>    |agr| agr.decls,
 
-                else => @compileError("runBench: `Runner` must be an Enum, Union or Struct, or a standalone function")
+                else => @compileError("run: `Runner` must be an Enum, Union or Struct, or a standalone function")
             };
 
             comptime var has_reset = false;
@@ -136,8 +136,7 @@ pub const Benchmark = struct {
 
             if (has_deinit) run_instance.deinit();
         } else {
-            // Not sure if it's actually possible to hit this branch?
-            @compileError("runBench: `Runner` must be an Enum, Union or Struct, or a standalone function with signature `fn (std.mem.Allocator) void`");
+            @compileError("run: `Runner` must be an Enum, Union or Struct, or a standalone function with signature `fn (std.mem.Allocator) void`");
         }
 
         const ret =  BenchmarkResult {
@@ -270,10 +269,6 @@ pub const Percentiles = struct {
     p99: u64,
     p995: u64,
 };
-
-/// BenchFunc is a function type that represents a benchmark function.
-/// It takes a pointer to a Benchmark object.
-pub const BenchFunc = fn (*Benchmark) void;
 
 /// BenchmarkResult stores the resulting computed metrics/statistics from a benchmark
 pub const BenchmarkResult = struct {

@@ -22,9 +22,9 @@ pub fn main() !void {
     var bench = try zbench.Benchmark.init(second, bench_iterations, gpa.allocator());
     defer bench.deinit();
 
-    const result1 = try bench.runBench(sleepyFirstRunner, "Sleepy-first bench");
-    const result2 = try bench.runBench(sleepySecondRunner, "Sleepy-second bench");
-    const result3 = try bench.runBench(sleepyThirdRunner, "Sleepy-third bench");
+    const result1 = try bench.run(sleepyFirstRunner, "Sleepy-first bench");
+    const result2 = try bench.run(sleepySecondRunner, "Sleepy-second bench");
+    const result3 = try bench.run(sleepyThirdRunner, "Sleepy-third bench");
 
     try zbench.prettyPrintResults(&.{result1, result2, result3}, true);
 }
