@@ -79,6 +79,10 @@ pub const Benchmark = struct {
         comptime Runner: anytype,
         name: []const u8,
     ) !BenchmarkResult {
+        // TODO:
+        //  1: Allow passing a runner of type `fn (void) void`
+        //  2: More checks and compile-errors for invalid inputs. For example,
+        //     struct-runners without an init functions should give a good error.
         if (@TypeOf(Runner) == fn (std.mem.Allocator) void) {
             while (
                     self.total_duration < self.max_duration_limit
@@ -163,37 +167,17 @@ pub const Benchmark = struct {
         if (elapsedDuration < self.min_duration) self.min_duration = elapsedDuration;
         if (elapsedDuration > self.max_duration) self.max_duration = elapsedDuration;
 
+        // NOTE: Why is the error conditon unreachable..?
         self.durations.append(elapsedDuration) catch unreachable;
     }
 
     /// Reset the benchmark
     pub fn reset(self: *Benchmark) void {
         self.total_operations = 0;
-        self.min_duration = 18446744073709551615;
+        self.min_duration = std.math.maxInt(u64);
         self.max_duration = 0;
         self.total_duration = 0;
-        self.durations.deinit();
-        self.durations = std.ArrayList(u64).init(self.allocator);
-    }
-
-    /// Returns the elapsed time since the benchmark started.
-    pub fn elapsed(self: *Benchmark) u64 {
-        var sum: u64 = 0;
-        for (self.durations.items) |duration| {
-            sum += duration;
-        }
-        return sum;
-    }
-
-    /// Sets the total number of operations performed.
-    /// ops: Number of operations.
-    pub fn setTotalOperations(self: *Benchmark, ops: usize) void {
-        self.total_operations = ops;
-    }
-
-    /// Prints a report of total operations performed during the benchmark.
-    pub fn report(self: *Benchmark) void {
-        std.debug.print("Total operations: {}\n", .{self.total_operations});
+        self.durations.clearRetainingCapacity();
     }
 
     pub fn quickSort(items: []u64, low: usize, high: usize) void {
@@ -225,13 +209,10 @@ pub const Benchmark = struct {
     pub fn calculatePercentiles(self: Benchmark) Percentiles {
         // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
-        var lastIndex: usize = 0;
-        if (len > 1) {
-            lastIndex = len - 1;
-        } else {
+        if (len <= 1) {
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
-        quickSort(self.durations.items, 0, lastIndex - 1);
+        quickSort(self.durations.items, 0, len - 1);
 
         const p75Index: usize = len * 75 / 100;
         const p99Index: usize = len * 99 / 100;
@@ -262,11 +243,13 @@ pub const Benchmark = struct {
 
     /// Calculate the standard deviation of the durations
     // NOTE: We are doing integer division, roots and unsafe casting..
-    // however it's very unlikely to overflow here, as this would
+    // Atleast it's very unlikely to overflow here, as this would
     // only happen if the duration variance is over 514 years, and it's reasonable
     // to assume no user will ever sit around and wait that for such a benchmark
     // to complete, to then be able to calculate its standard deviation..
     pub fn calculateStd(self: Benchmark) u64 {
+        if (self.durations.items.len <= 1) return 0;
+
         const avg = self.calculateAverage();
         var nvar: u64 = 0;
         for (self.durations.items) |dur| {
@@ -276,7 +259,7 @@ pub const Benchmark = struct {
             nvar += @bitCast((d - a)*(d - a));
         }
 
-        return std.math.sqrt(nvar) / (self.durations.items.len - 1);
+        return std.math.sqrt(nvar / (self.durations.items.len - 1));
     }
 
     pub fn deinit(self: Benchmark) void { self.durations.deinit(); }
@@ -317,7 +300,7 @@ pub const BenchmarkResult = struct {
         avg_std_offset += (try std.fmt.bufPrint(avg_std_buffer[avg_std_offset..], " ± ", .{})).len;
         avg_std_offset += (try format.duration(avg_std_buffer[avg_std_offset..], self.std_duration)).len;
 
-        // This looks quite ugly, maybe there's a better way to do all this?
+        // FIXME: This looks quite ugly, maybe there's a better way to do all this?
         var min_max_buffer: [128]u8 = undefined;
         min_max_buffer[0] = '(';
         var min_max_offset = (try format.duration(min_max_buffer[1..], self.min_duration)).len + 1;
@@ -327,15 +310,16 @@ pub const BenchmarkResult = struct {
         min_max_offset += 1;
 
         if (header) prettyPrintHeader();
-        std.debug.print("{s:<25} \x1b[90m{d:<8} \x1b[33m{s:<20} \x1b[94m{s:<30} \x1b[90m{s:<10} \x1b[90m{s:<10} \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, self.total_operations, avg_std_buffer[0..avg_std_offset], min_max_buffer[0..min_max_offset], p75_str, p99_str, p995_str});
+        std.debug.print("{s:<25} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[94m{s:<28} \x1b[90m{s:<10} \x1b[90m{s:<10} \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, self.total_operations, avg_std_buffer[0..avg_std_offset], min_max_buffer[0..min_max_offset], p75_str, p99_str, p995_str});
     }
 };
 
 pub fn prettyPrintHeader() void {
-    std.debug.print("{s:<25} {s:<8} {s:<20} {s:<30} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg ± σ)", "(min ............. max)", "p75", "p99", "p995"});
+    std.debug.print("{s:<25} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg ± σ)", "(min ............. max)", "p75", "p99", "p995"});
     std.debug.print("---------------------------------------------------------------------------------------------------------------------\n", .{});
 }
 
+// TODO: Allow sorting by different metrics?
 pub fn prettyPrintResults(results: []const BenchmarkResult, header: bool) !void {
     if (header) {
         prettyPrintHeader();
