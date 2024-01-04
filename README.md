@@ -5,7 +5,9 @@
 <img src="logo.png" alt="zBench logo" align="right" width="20%"/>
 
 zBench is a simple benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
-(This is a fork of the original zBench repository. Check the Usage section below to see what's new. *NOTE:* this fork requires a version 0.12.0 compiler).
+
+(This is a fork of the original zBench repository. Check the Usage section below to see what's new.
+**NOTE:** this fork requires a version 0.12.0 compiler).
 
 ## Install Option 1 (build.zig.zon)
 
@@ -102,11 +104,10 @@ function. The latter is the simplest, and fits most usecases. Here are some exam
 ### Standalone function
 The simplest case is when you wish to benchmark a standalone function
 ```zig
-fn myBenchRunner(b: std.mem.Allocator) void {
+fn myBenchRunner() void {
     // Code to benchmark here
 }
 ```
-Note the signature/type of the function; it must take an allocator (even if you don't use it) and return `void` (this may be relaxed in the future).
 You can then run your benchmarks in either a test, or main as an executable. The latter is preferable as tests can generate noise and obscure the benchmark output.
 Next we instantiate a `Benchmark` instance.
 ```zig
@@ -120,14 +121,14 @@ pub fn main() !void {
     defer bench.deinit();
 }
 ```
-The first argument to `init` is an estimate in nanoseconds for how long we want to wait for any given benchmark to finish, the second argument is the maximum
-number of repetitions or runs for each benchmark. Now to perform the benchmark we pass `myBenchRunner` to `bench.run`, and the name of our benchmark.
-The complete example looks like this:
+The first argument to `init` is an estimate in nanoseconds for the maximum amount of time we are willing to wait for any given benchmark to finish,
+the second argument is the maximum number of repetitions or runs for each benchmark. Now to perform the benchmark we pass `myBenchRunner` to `bench.run`,
+and the name of our benchmark. The complete example looks like this:
 ```zig
 const std = @import("std");
 const zbench = @import("zbench");
 
-fn myBenchRunner(_: std.mem.Allocator) void {
+fn myBenchRunner() void {
     // Code to benchmark here
 }
 
@@ -150,10 +151,15 @@ benchmark                 runs     time (avg ± σ)         (min ............. m
 ---------------------------------------------------------------------------------------------------------------------
 Hello bench               128      8.806µs ± 67.0ns       (8.351µs ... 9.185µs)        8.813µs    9.31µs     9.185µs
 ```
-
+If `myBenchRunner` needs to allocate we could have declared `std.mem.Allocator` as a parameter:
+```zig
+fn myBenchRunner(alloc: std.mem.Allocator) void {
+    // Code to benchmark here
+}
+```
 ### Aggregate runner
-In most cases we want to first set up some state relevant to the benchmark, but we aren't interested in benchmarking the setup code. You can use an aggregate runner (ie. struct)
-to split such initialisation from run code:
+In most cases we want to first set up some state relevant to the benchmark, but we aren't interested in benchmarking the state setup code.
+You can use an aggregate runner (ie. struct) to split such initialisation from run code:
 ```zig
 const std = @import("std");
 const zbench = @import("zbench");
@@ -188,7 +194,8 @@ pub fn main() !void {
     try bench_result.prettyPrint(true);
 }
 ```
-An aggregate runner like the above must have the associated methods `run` and `init` (it's free to have other methods as well) with the same signatures as above.
+Now instead of a standalone function our runner is a struct with the methods `init` and `run`. It's free to have other methods as well,
+but it must include those two. The run function must take either `Self` or `*Self`, and the init function must take `std.mem.Allocator`.
 
 ### Aggregate runner with cleanup
 If your runner has to do some form of cleanup such as de-allocating memory, you can additionally declare a `deinit` method. Lets write a runner for benchmarking the
@@ -263,7 +270,7 @@ const StructRunner = struct {
 ```
 Now `reset` is instead called for every benchmark-run, and `init`/`deinit` are only called once at the start and end of the benchmark respectively.
 
-### Running at printing multiple benchmarks
+### Running and printing multiple benchmarks
 You can print multiple results by use the convenience-function `zbench.prettyPrintResults` or just printing them in a for-loop without the header. Here's the `sleep.zig`
 example:
 ```zig
@@ -305,15 +312,52 @@ Sleepy-first bench        128      161.812µs ± 46.419µs   (157.87µs ... 682.
 Sleepy-second bench       128      1.237ms ± 89.535µs     (1.58ms ... 1.925ms)         1.243ms    1.752ms    1.925ms   
 Sleepy-third bench        98       10.259ms ± 161.244µs   (10.78ms ... 11.558ms)       10.248ms   11.558ms   11.558ms
 ```
-Check out the `linked_list` example for how to use zig's comptime to neatly run multiple benchmarks.
+Check out the [linked_list](./examples/linked_list.zig) example for how to use zig's comptime to neatly run multiple benchmarks.
 
-### Running zBench Examples
+### Using the timing functionality in `Benchmark` directly
+TODO
+
+### Benchmark Runners
+Benchmark runners must be one of either
+- Standalone function with *either* of the following signature/function type
+   - `fn (std.mem.Allocator) void`
+   - `fn () void`
+
+- Aggregate (Struct/Union/Enum) with following associated methods
+  - `pub fn init(std.mem.Allocator) !Self`  : (Required)
+  - `pub fn run(Self) void`                 : (Required)
+  - `pub fn deinit(Self) void`              : (Optional)
+  - `pub fn reset(Self) void`               : (Optional)
+
+The function signatures must match, but `*Self` instead of `Self` also works for the above methods
+
+### Reporting Benchmarks
+
+zBench provides a comprehensive report for each benchmark run. It includes the total operations performed, the average, min, and max durations of operations, and the percentile distribution (p75, p99, p995) of operation durations.
+
+```yaml
+benchmark                 runs     time (avg ± σ)         (min ............. max)      p75        p99        p995
+---------------------------------------------------------------------------------------------------------------------
+Hello bench               128      8.806µs ± 67.0ns       (8.351µs ... 9.185µs)        8.813µs    9.31µs     9.185µs
+```
+
+This example report indicates that the benchmark "benchmarkMyFunction" was run with an average time of 8.806 µs with standard deviation 67.0 ns per operation.
+The minimum and maximum operation times were 8.351µs and 9.185µs, respectively. The 75th, 99th, and 99.5th percentiles of operation durations were
+8.813µs, 9.31µs, 9.185µs, respectively.
+
+### Running zBench Examples and Tests
 
 You can compile all examples with the following command:
 ```bash
 zig build examples
 ```
 The binaries are placed by default in `./zBench/zig-out/bin/`
+
+You can run all tests with
+
+```bash
+zig build test
+```
 
 ### Troubleshooting
 

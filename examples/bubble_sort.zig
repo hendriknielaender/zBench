@@ -8,7 +8,7 @@ const BubbleSortRunner = struct {
     nums: [10]i32,
 
     pub fn init(_: std.mem.Allocator) !Self {
-        return Self{ .nums = [_]i32{ 4, 1, 3, 1, 5, 2, 6, 0, 7, 8} };
+        return Self{ .nums = [_]i32{ 4, 1, 3, 1, 5, 2, 6, 0, 7, 8 } };
     }
 
     pub fn run(self: *Self) void {

@@ -20,11 +20,11 @@ test "benchmark run with standalone function" {
     try expectEq(runs, res.total_operations);
 
     // We also expect the Benchmark instance to be reset
-    try expectEq(@as(usize,0), bench.total_operations);
+    try expectEq(@as(usize, 0), bench.total_operations);
     try expectEq(@as(usize, std.math.maxInt(u64)), bench.min_duration);
-    try expectEq(@as(usize,0), bench.max_duration);
-    try expectEq(@as(usize,0), bench.total_duration);
-    try expectEq(@as(usize,0), bench.durations.items.len);
+    try expectEq(@as(usize, 0), bench.max_duration);
+    try expectEq(@as(usize, 0), bench.total_duration);
+    try expectEq(@as(usize, 0), bench.durations.items.len);
 
     // These fields should stay the same however
     try expectEq(@as(usize, std.math.maxInt(u64)), bench.max_duration_limit);
@@ -33,7 +33,6 @@ test "benchmark run with standalone function" {
     // NOTE: Not sure why we need all these casts, but the compiler complains otherwise..
 }
 
-// NOTE: The above four tests are purely testing the metaprogramming and not any actual values
 test "benchmark run with enum runner with init and run" {
     const runs: usize = 128;
     var bench = try Benchmark.init(std.math.maxInt(u64), runs, test_alloc);
@@ -44,7 +43,9 @@ test "benchmark run with enum runner with init and run" {
 
         Variant,
 
-        pub fn init(_: std.mem.Allocator) !Self { return Self.Variant; }
+        pub fn init(_: std.mem.Allocator) !Self {
+            return Self.Variant;
+        }
         pub fn run(_: *Self) void {}
     };
 
@@ -67,7 +68,7 @@ test "benchmark run with struct runner with init, run and deinit" {
 
         pub fn init(a: std.mem.Allocator) !Self {
             Self.init_count += 1;
-            return Self { .items = try a.alloc(u8, 5), .alloc = a };
+            return Self{ .items = try a.alloc(u8, 5), .alloc = a };
         }
         pub fn run(self: Self) void {
             if (self.items[1] >= self.items[2]) {
@@ -77,7 +78,9 @@ test "benchmark run with struct runner with init, run and deinit" {
             }
         }
 
-        pub fn deinit(self: Self) void { self.alloc.free(self.items); }
+        pub fn deinit(self: Self) void {
+            self.alloc.free(self.items);
+        }
     };
 
     const res = try bench.run(Runner, "test_bench");
@@ -106,7 +109,7 @@ test "benchmark run with complete bench-runner struct" {
 
         pub fn init(a: std.mem.Allocator) !Self {
             Self.init_count += 1;
-            return Self { .items = try a.alloc(u64, 64), .alloc = a };
+            return Self{ .items = try a.alloc(u64, 64), .alloc = a };
         }
         pub fn run(self: Self) void {
             for (self.items, 0..) |*item, i| {
@@ -137,14 +140,13 @@ test "benchmark run with complete bench-runner struct" {
 }
 
 test "benchmark quickSort" {
-    comptime var nums = [_]u64{2, 3, 4, 6, 1, 8, 0, 5};
-    comptime Benchmark.quickSort(&nums, 0, nums.len-1);
+    comptime var nums = [_]u64{ 2, 3, 4, 6, 1, 8, 0, 5 };
+    comptime Benchmark.quickSort(&nums, 0, nums.len - 1);
 
-    try expectEq([_]u64{0, 1, 2, 3, 4, 5, 6, 8}, nums);
+    try expectEq([_]u64{ 0, 1, 2, 3, 4, 5, 6, 8 }, nums);
 }
 
 // TODO: Add a test for Benchmark.calculatePercentiles
-
 
 test "benchmark calculateAverage and calulateStd" {
     var bench = try Benchmark.init(std.math.maxInt(u64), 8, test_alloc);

@@ -56,53 +56,41 @@ pub const Benchmark = struct {
     }
 
     /// Runner: Must be one of either -
-    ///     Standalone function with following signature/function type -
-    ///         fn (std.mem.Allocator) void             : Required
+    ///     Standalone function with *either* of the following signature/function type -
+    ///         1: fn (std.mem.Allocator) void          : Required
+    ///         2: fn () void                           : Required
     ///
-    ///     Aggregate (Struct/Union/Enum) with followin associated methods -
+    ///     Aggregate (Struct/Union/Enum) with following associated methods -
     ///         pub fn init(std.mem.Allocator) !Self    : Required
     ///         pub fn run(Self) void                   : Required
     ///         pub fn deinit(Self) void                : Optional
     ///         pub fn reset(Self) void                 : Optional
     ///
     /// NOTE:
-    ///     `*Self` instead of `Self` also works for the above types.
+    ///     `*Self` instead of `Self` also works for the above methods.
     ///
     ///     `reset` can be useful for increasing benchmarking speed. If it is
     ///     not supplied, the runner instance is "deinited" and "inited" between
     ///     every run.
-    ///
-    ///     If the above restrictions aren't matched exactly you may get strange
-    ///     compilation errors that can be hard to debug!
     pub fn run(
         self: *Benchmark,
         comptime Runner: anytype,
         name: []const u8,
     ) !BenchmarkResult {
-        // TODO:
-        //  1: Allow passing a runner of type `fn (void) void`
-        //  2: More checks and compile-errors for invalid inputs. For example,
-        //     struct-runners without an init functions should give a good error.
-        if (@TypeOf(Runner) == fn (std.mem.Allocator) void) {
-            while (
-                    self.total_duration < self.max_duration_limit
-                and self.total_operations < self.max_operations
-            ) {
-                self.start();
-                Runner(self.allocator);
-                self.stop();
-
-                self.total_operations += 1;
-            }
-        } else if (@TypeOf(Runner) == type) {
+        const err_msg = "Benchmark.run: `Runner` must be an aggregate (Enum, Union or Struct), or a function.\nIf a function, it must have the signature `fn (std.mem.Allocator) void` or `fn () void`";
+        // We hit this branch when runner is an aggregate (struct/enum/union)
+        if (@TypeOf(Runner) == type) {
+            const err_msg_aggregate = "Benchmark.run: `Runner` did not have both `run` and `init` as associated methods";
             const decls = switch (@typeInfo(Runner)) {
-                .Struct =>  |agr| agr.decls,
-                .Union =>   |agr| agr.decls,
-                .Enum =>    |agr| agr.decls,
+                .Struct => |agr| agr.decls,
+                .Union => |agr| agr.decls,
+                .Enum => |agr| agr.decls,
 
-                else => @compileError("run: `Runner` must be an Enum, Union or Struct, or a standalone function")
+                else => @compileError(err_msg),
             };
 
+            comptime var has_init = false;
+            comptime var has_run = false;
             comptime var has_reset = false;
             comptime var has_deinit = false;
             comptime for (decls) |dec| {
@@ -110,14 +98,17 @@ pub const Benchmark = struct {
                     has_reset = true;
                 } else if (std.mem.eql(u8, dec.name, "deinit")) {
                     has_deinit = true;
+                } else if (std.mem.eql(u8, dec.name, "init")) {
+                    has_init = true;
+                } else if (std.mem.eql(u8, dec.name, "run")) {
+                    has_run = true;
                 }
             };
 
+            comptime if (!has_init or !has_run) @compileError(err_msg_aggregate);
+
             var run_instance = try Runner.init(self.allocator);
-            while (
-                    self.total_duration < self.max_duration_limit
-                and self.total_operations < self.max_operations
-            ) {
+            while (self.total_duration < self.max_duration_limit and self.total_operations < self.max_operations) {
                 self.start();
                 run_instance.run();
                 self.stop();
@@ -136,10 +127,24 @@ pub const Benchmark = struct {
 
             if (has_deinit) run_instance.deinit();
         } else {
-            @compileError("run: `Runner` must be an Enum, Union or Struct, or a standalone function with signature `fn (std.mem.Allocator) void`");
+            while (self.total_duration < self.max_duration_limit and self.total_operations < self.max_operations) {
+                self.start();
+
+                if (@TypeOf(Runner) == fn (std.mem.Allocator) void) {
+                    Runner(self.allocator);
+                } else if (@TypeOf(Runner) == fn () void) {
+                    Runner();
+                } else {
+                    @compileError(err_msg);
+                }
+
+                self.stop();
+
+                self.total_operations += 1;
+            }
         }
 
-        const ret =  BenchmarkResult {
+        const ret = BenchmarkResult{
             .name = name,
             .percs = self.calculatePercentiles(),
             .avg_duration = self.calculateAverage(),
@@ -221,7 +226,7 @@ pub const Benchmark = struct {
         const p99 = self.durations.items[p99Index];
         const p995 = self.durations.items[p995Index];
 
-        return Percentiles { .p75 = p75, .p99 = p99, .p995 = p995 };
+        return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
     /// Calculate the average duration
@@ -255,13 +260,15 @@ pub const Benchmark = struct {
             const d: i64 = @bitCast(dur);
             const a: i64 = @bitCast(avg);
 
-            nvar += @bitCast((d - a)*(d - a));
+            nvar += @bitCast((d - a) * (d - a));
         }
 
         return std.math.sqrt(nvar / (self.durations.items.len - 1));
     }
 
-    pub fn deinit(self: Benchmark) void { self.durations.deinit(); }
+    pub fn deinit(self: Benchmark) void {
+        self.durations.deinit();
+    }
 };
 
 pub const Percentiles = struct {
@@ -305,12 +312,12 @@ pub const BenchmarkResult = struct {
         min_max_offset += 1;
 
         if (header) prettyPrintHeader();
-        std.debug.print("{s:<25} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[94m{s:<28} \x1b[90m{s:<10} \x1b[90m{s:<10} \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, self.total_operations, avg_std_buffer[0..avg_std_offset], min_max_buffer[0..min_max_offset], p75_str, p99_str, p995_str});
+        std.debug.print("{s:<25} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[94m{s:<28} \x1b[90m{s:<10} \x1b[90m{s:<10} \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, self.total_operations, avg_std_buffer[0..avg_std_offset], min_max_buffer[0..min_max_offset], p75_str, p99_str, p995_str });
     }
 };
 
 pub fn prettyPrintHeader() void {
-    std.debug.print("{s:<25} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg ± σ)", "(min ............. max)", "p75", "p99", "p995"});
+    std.debug.print("{s:<25} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg ± σ)", "(min ............. max)", "p75", "p99", "p995" });
     std.debug.print("---------------------------------------------------------------------------------------------------------------------\n", .{});
 }
 

@@ -26,5 +26,5 @@ pub fn main() !void {
     const result2 = try bench.run(sleepySecondRunner, "Sleepy-second bench");
     const result3 = try bench.run(sleepyThirdRunner, "Sleepy-third bench");
 
-    try zbench.prettyPrintResults(&.{result1, result2, result3}, true);
+    try zbench.prettyPrintResults(&.{ result1, result2, result3 }, true);
 }

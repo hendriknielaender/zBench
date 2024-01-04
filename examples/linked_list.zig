@@ -8,61 +8,55 @@ const runners = .{
     struct {
         const Self = @This();
         const name = "linked-list append-128";
-
         ll: LinkedList(i128),
-
         pub fn init(alloc: std.mem.Allocator) !Self {
-            return Self { .ll = LinkedList(i128).init(alloc) };
+            return Self{ .ll = LinkedList(i128).init(alloc) };
         }
-
         pub fn run(self: *Self) void {
             for (0..128) |i| self.ll.append(i) catch @panic("Alloc error!");
         }
-
-        pub fn deinit(self: *Self) void { self.ll.deinit(); }
+        pub fn deinit(self: *Self) void {
+            self.ll.deinit();
+        }
     },
 
     // Runner for popping from list with 128 elements
     struct {
         const Self = @This();
         const name = "linked-list pop-128";
-
         ll: LinkedList(i128),
-
         pub fn init(alloc: std.mem.Allocator) !Self {
             var ll = LinkedList(i128).init(alloc);
             for (0..128) |i| ll.append(i) catch @panic("Alloc error!");
-            return Self { .ll = ll };
+            return Self{ .ll = ll };
         }
-
         pub fn run(self: *Self) void {
             for (0..128) |_| _ = self.ll.pop();
         }
-
-        pub fn deinit(self: *Self) void { self.ll.deinit(); }
+        pub fn deinit(self: *Self) void {
+            self.ll.deinit();
+        }
     },
 
     // Runner for iterating over a list with 128 elements and addint 1 to each element
     struct {
         const Self = @This();
         const name = "linked-list iter-128";
-
         ll: LinkedList(i128),
-
         pub fn init(alloc: std.mem.Allocator) !Self {
             var ll = LinkedList(i128).init(alloc);
             for (0..128) |i| ll.append(i) catch @panic("Alloc error!");
-            return Self { .ll = ll};
+            return Self{ .ll = ll };
         }
-
         pub fn run(self: *Self) void {
             var it = self.ll.iterStart();
             while (it.next()) |elem| {
                 elem.* += 1;
             }
         }
-
-        pub fn deinit(self: *Self) void { self.ll.deinit(); }
+        pub fn deinit(self: *Self) void {
+            self.ll.deinit();
+        }
     },
 };
 
