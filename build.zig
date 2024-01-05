@@ -43,7 +43,7 @@ fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
 
-    const test_dirs = [_][]const u8{"util"};
+    const test_dirs = [_][]const u8{"util", "."};
     for (test_dirs) |dir| {
         addTestsFromDir(b, test_step, dir, target, optimize);
     }

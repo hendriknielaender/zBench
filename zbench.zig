@@ -154,8 +154,11 @@ pub const Benchmark = struct {
         var p995_buffer: [128]u8 = undefined;
         const p995_str = try format.duration(p995_buffer[0..], percentiles.p995);
 
-        var avg_buffer: [128]u8 = undefined;
-        const avg_str = try format.duration(avg_buffer[0..], self.calculateAverage());
+        var avg_std_buffer: [128]u8 = undefined;
+        var avg_std_offset = (try format.duration(avg_std_buffer[0..], self.calculateAverage())).len;
+        avg_std_offset += (try std.fmt.bufPrint(avg_std_buffer[avg_std_offset..], " ± ", .{})).len;
+        avg_std_offset += (try format.duration(avg_std_buffer[avg_std_offset..], self.calculateStd())).len;
+        const avg_std_str = avg_std_buffer[0..avg_std_offset];
 
         var min_buffer: [128]u8 = undefined;
         const min_str = try format.duration(min_buffer[0..], self.minDuration);
@@ -163,9 +166,9 @@ pub const Benchmark = struct {
         var max_buffer: [128]u8 = undefined;
         const max_str = try format.duration(max_buffer[0..], self.maxDuration);
 
-        std.debug.print("{s:<20} {s:<12} {s:<20} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "time (avg)", "(min ... max)", "p75", "p99", "p995" });
+        std.debug.print("{s:<20} {s:<12} {s:<20} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "time (avg ± σ)", "(min ... max)", "p75", "p99", "p995" });
         std.debug.print("--------------------------------------------------------------------------------------\n", .{});
-        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m) \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, avg_str, min_str, max_str, p75_str, p99_str, p995_str });
+        std.debug.print("{s:<20} \x1b[33m{s:<12}\x1b[0m (\x1b[94m{s}\x1b[0m ... \x1b[95m{s}\x1b[0m) \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m \x1b[90m{s:<10}\x1b[0m\n", .{ self.name, avg_std_str, min_str, max_str, p75_str, p99_str, p995_str });
     }
 
     /// Calculate the average duration
@@ -182,6 +185,25 @@ pub const Benchmark = struct {
         const avg = sum / len;
 
         return avg;
+    }
+
+    /// Calculate the standard deviation of the durations
+    pub fn calculateStd(self: Benchmark) u64 {
+        if (self.durations.items.len <= 1) return 0;
+
+        const avg = self.calculateAverage();
+        var nvar: u64 = 0;
+        for (self.durations.items) |dur| {
+            // NOTE: With realistic real-life samples this will never overflow,
+            // however a solution without bitcasts would still be cleaner
+            const d: i64 = @bitCast(dur);
+            const a: i64 = @bitCast(avg);
+
+            nvar += @bitCast((d - a) * (d - a));
+        }
+
+        // We are using the non-biased estimator for the variance; sum(X - μ)^2 / (n - 1)
+        return std.math.sqrt(nvar / (self.durations.items.len - 1));
     }
 };
 
