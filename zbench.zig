@@ -16,13 +16,13 @@ pub const Benchmark = struct {
     /// Timer used to track the duration of the benchmark.
     timer: std.time.Timer,
     /// Total number of operations performed during the benchmark.
-    totalOperations: usize = 0,
+    total_operations: usize = 0,
     /// Minimum duration recorded among all runs (initially set to the maximum possible value).
-    minDuration: u64 = 18446744073709551615,
+    min_duration: u64 = std.math.maxInt(u64),
     /// Maximum duration recorded among all runs.
-    maxDuration: u64 = 0,
+    max_duration: u64 = 0,
     /// Total duration accumulated over all runs.
-    totalDuration: u64 = 0,
+    total_duration: u64 = 0,
     /// A dynamic list storing the duration of each run.
     durations: std.ArrayList(u64),
     /// Memory allocator used by the benchmark.
@@ -49,22 +49,21 @@ pub const Benchmark = struct {
     /// Stop the benchmark and record the duration
     pub fn stop(self: *Benchmark) void {
         const elapsedDuration = self.timer.read();
-        self.totalDuration += elapsedDuration;
+        self.total_duration += elapsedDuration;
 
-        if (elapsedDuration < self.minDuration) self.minDuration = elapsedDuration;
-        if (elapsedDuration > self.maxDuration) self.maxDuration = elapsedDuration;
+        if (elapsedDuration < self.min_duration) self.min_duration = elapsedDuration;
+        if (elapsedDuration > self.max_duration) self.max_duration = elapsedDuration;
 
         self.durations.append(elapsedDuration) catch unreachable;
     }
 
     /// Reset the benchmark
     pub fn reset(self: *Benchmark) void {
-        self.totalOperations = 0;
-        self.minDuration = 18446744073709551615;
-        self.maxDuration = 0;
-        self.totalDuration = 0;
-        self.durations.deinit();
-        self.durations = std.ArrayList(u64).init(self.allocator);
+        self.total_operations = 0;
+        self.min_duration = std.math.maxInt(u64);
+        self.max_duration = 0;
+        self.total_duration = 0;
+        self.durations.clearRetainingCapacity();
     }
 
     /// Returns the elapsed time since the benchmark started.
@@ -79,12 +78,12 @@ pub const Benchmark = struct {
     /// Sets the total number of operations performed.
     /// ops: Number of operations.
     pub fn setTotalOperations(self: *Benchmark, ops: usize) void {
-        self.totalOperations = ops;
+        self.total_operations = ops;
     }
 
     /// Prints a report of total operations performed during the benchmark.
     pub fn report(self: *Benchmark) void {
-        std.debug.print("Total operations: {}\n", .{self.totalOperations});
+        std.debug.print("Total operations: {}\n", .{self.total_operations});
     }
 
     pub const Percentiles = struct {
@@ -161,17 +160,17 @@ pub const Benchmark = struct {
         const avg_std_str = avg_std_buffer[0..avg_std_offset];
 
         var min_buffer: [128]u8 = undefined;
-        const min_str = try format.duration(min_buffer[0..], self.minDuration);
+        const min_str = try format.duration(min_buffer[0..], self.min_duration);
 
         var max_buffer: [128]u8 = undefined;
-        const max_str = try format.duration(max_buffer[0..], self.maxDuration);
+        const max_str = try format.duration(max_buffer[0..], self.max_duration);
 
         var min_max_buffer: [128]u8 = undefined;
         const min_max_str = try std.fmt.bufPrint(min_max_buffer[0..], "({s} ... {s})", .{ min_str, max_str });
 
         std.debug.print("{s:<22} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg ± σ)", "(min ... max)", "p75", "p99", "p995" });
         std.debug.print("---------------------------------------------------------------------------------------------------------------\n", .{});
-        std.debug.print("{s:<22} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n", .{ self.name, self.totalOperations, avg_std_str, min_max_str, p75_str, p99_str, p995_str });
+        std.debug.print("{s:<22} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n", .{ self.name, self.total_operations, avg_std_str, min_max_str, p75_str, p99_str, p995_str });
     }
 
     /// Calculate the average duration

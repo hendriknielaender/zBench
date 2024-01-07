@@ -126,12 +126,13 @@ You can run multiple benchmark functions in a single program by using zBench.run
 zBench provides a comprehensive report for each benchmark run. It includes the total operations performed, the average, min, and max durations of operations, and the percentile distribution (p75, p99, p995) of operation durations.
 
 ```yaml
-benchmark           time (avg)    (min ... max)    p75        p99        p995
---------------------------------------------------------------------------------------
-benchmarkMyFunction 1200 ms       (100 ms ... 2000 ms) 1100 ms   1900 ms   1950 ms
+benchmark              runs     time (avg ± σ)         (min ... max)                p75        p99        p995
+---------------------------------------------------------------------------------------------------------------
+benchmarkMyFunction    1000     1200ms ± 10ms          (100ms ... 2000ms)           1100ms     1900ms     1950ms
 ```
 
-This example report indicates that the benchmark "benchmarkMyFunction" was run with an average time of 1200 ms per operation. The minimum and maximum operation times were 100 ms and 2000 ms, respectively. The 75th, 99th, and 99.5th percentiles of operation durations were 1100 ms, 1900 ms, and 1950 ms, respectively.
+This example report indicates that the benchmark "benchmarkMyFunction" was run with an average of 1200 ms per operation with a 10ms standard deviation.
+The minimum and maximum operation times were 100 ms and 2000 ms, respectively. The 75th, 99th, and 99.5th percentiles of operation durations were 1100 ms, 1900 ms, and 1950 ms, respectively.
 
 ### Running zBench Examples
 
