@@ -53,7 +53,7 @@ fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
 
 fn addTestsFromDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const u8, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
     const iterableDir = std.fs.cwd().openIterableDir(dir_path, .{}) catch {
-        log.warn("Failed to open directory: {any}", .{dir_path});
+        log.warn("Failed to open directory: {s}", .{dir_path});
         return;
     };
 
