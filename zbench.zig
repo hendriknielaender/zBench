@@ -3,6 +3,8 @@
 //!zig-autodoc-guide: docs/advanced.md
 
 const std = @import("std");
+const log = std.log.scoped(.zbench);
+
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
 
@@ -83,7 +85,7 @@ pub const Benchmark = struct {
 
     /// Prints a report of total operations performed during the benchmark.
     pub fn report(self: *Benchmark) void {
-        std.debug.print("Total operations: {}\n", .{self.total_operations});
+        log.debug("Total operations: {}", .{self.total_operations});
     }
 
     pub const Percentiles = struct {
@@ -125,7 +127,7 @@ pub const Benchmark = struct {
         if (len > 1) {
             lastIndex = len - 1;
         } else {
-            std.debug.print("Cannot calculate percentiles: recorded less than two durations\n", .{});
+            log.debug("Cannot calculate percentiles: recorded less than two durations", .{});
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
         quickSort(self.durations.items, 0, lastIndex - 1);
