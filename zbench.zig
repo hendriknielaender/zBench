@@ -176,6 +176,7 @@ pub const Benchmark = struct {
             "{s:<22} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n",
             .{ self.name, self.total_operations, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
         );
+        try stdout.print("\n", .{});
     }
 
     /// Calculate the average duration
