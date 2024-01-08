@@ -1,4 +1,6 @@
 const std = @import("std");
+const log = std.log.scoped(.zbench_build);
+
 const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 0 };
 
 pub fn build(b: *std.Build) void {
@@ -43,7 +45,7 @@ fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
 
-    const test_dirs = [_][]const u8{"util", "."};
+    const test_dirs = [_][]const u8{ "util", "." };
     for (test_dirs) |dir| {
         addTestsFromDir(b, test_step, dir, target, optimize);
     }
@@ -51,7 +53,7 @@ fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
 
 fn addTestsFromDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const u8, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
     const iterableDir = std.fs.cwd().openIterableDir(dir_path, .{}) catch {
-        std.debug.print("Failed to open directory: {any}\n", .{dir_path});
+        log.warn("Failed to open directory: {any}", .{dir_path});
         return;
     };
 
@@ -60,7 +62,7 @@ fn addTestsFromDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const 
         const optionalEntry = it.next() catch |err| {
             //TODO: break if access denied
             //if (err == std.fs.IterableDir.ChmodError) break;
-            std.debug.print("Directory iteration error: {any}\n", .{err});
+            log.warn("Directory iteration error: {any}", .{err});
             continue;
         };
 
