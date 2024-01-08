@@ -83,12 +83,6 @@ pub const Benchmark = struct {
         self.total_operations = ops;
     }
 
-    /// Prints a report of total operations performed during the benchmark.
-    pub fn report(self: *Benchmark) !void {
-        const stdout = std.io.getStdOut().writer();
-        try stdout.print("\nTotal operations: {}\n", .{self.total_operations});
-    }
-
     pub const Percentiles = struct {
         p75: u64,
         p99: u64,
@@ -144,7 +138,8 @@ pub const Benchmark = struct {
         return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
-    pub fn prettyPrint(self: Benchmark) !void {
+    /// Prints a report of total operations and timing statistics.
+    pub fn report(self: Benchmark) !void {
         const percentiles = self.calculatePercentiles();
 
         var p75_buffer: [128]u8 = undefined;
@@ -173,7 +168,7 @@ pub const Benchmark = struct {
 
         const stdout = std.io.getStdOut().writer();
         try stdout.print(
-            "{s:<22} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+            "\n{s:<22} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
             .{ "benchmark", "runs", "time (avg ± σ)", "(min ... max)", "p75", "p99", "p995" },
         );
         try stdout.print("---------------------------------------------------------------------------------------------------------------\n", .{});
@@ -329,5 +324,4 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     bench.setTotalOperations(bench.N);
 
     try bench.report();
-    try bench.prettyPrint();
 }
