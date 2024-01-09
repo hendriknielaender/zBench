@@ -3,6 +3,8 @@
 //!zig-autodoc-guide: docs/advanced.md
 
 const std = @import("std");
+const log = std.log.scoped(.zbench);
+
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
 
@@ -81,11 +83,6 @@ pub const Benchmark = struct {
         self.total_operations = ops;
     }
 
-    /// Prints a report of total operations performed during the benchmark.
-    pub fn report(self: *Benchmark) void {
-        std.debug.print("Total operations: {}\n", .{self.total_operations});
-    }
-
     pub const Percentiles = struct {
         p75: u64,
         p99: u64,
@@ -125,7 +122,7 @@ pub const Benchmark = struct {
         if (len > 1) {
             lastIndex = len - 1;
         } else {
-            std.debug.print("Cannot calculate percentiles: recorded less than two durations\n", .{});
+            log.debug("Cannot calculate percentiles: recorded less than two durations", .{});
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
         quickSort(self.durations.items, 0, lastIndex - 1);
@@ -141,7 +138,8 @@ pub const Benchmark = struct {
         return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
-    pub fn prettyPrint(self: Benchmark) !void {
+    /// Prints a report of total operations and timing statistics.
+    pub fn report(self: Benchmark) !void {
         const percentiles = self.calculatePercentiles();
 
         var p75_buffer: [128]u8 = undefined;
@@ -168,9 +166,17 @@ pub const Benchmark = struct {
         var min_max_buffer: [128]u8 = undefined;
         const min_max_str = try std.fmt.bufPrint(min_max_buffer[0..], "({s} ... {s})", .{ min_str, max_str });
 
-        std.debug.print("{s:<22} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n", .{ "benchmark", "runs", "time (avg ± σ)", "(min ... max)", "p75", "p99", "p995" });
-        std.debug.print("---------------------------------------------------------------------------------------------------------------\n", .{});
-        std.debug.print("{s:<22} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n", .{ self.name, self.total_operations, avg_std_str, min_max_str, p75_str, p99_str, p995_str });
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print(
+            "\n{s:<22} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+            .{ "benchmark", "runs", "time (avg ± σ)", "(min ... max)", "p75", "p99", "p995" },
+        );
+        try stdout.print("---------------------------------------------------------------------------------------------------------------\n", .{});
+        try stdout.print(
+            "{s:<22} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n",
+            .{ self.name, self.total_operations, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
+        );
+        try stdout.print("\n", .{});
     }
 
     /// Calculate the average duration
@@ -248,7 +254,7 @@ pub const BenchmarkResults = struct {
     /// Formats and prints the benchmark results in a readable format.
     pub fn prettyPrint(self: BenchmarkResults) !void {
         const stdout = std.io.getStdOut().writer();
-        std.debug.print("--------------------------------------------------------------------------------------\n", .{});
+        stdout.print("--------------------------------------------------------------------------------------\n", .{});
 
         for (self.results.items) |result| {
             try stdout.print("{s}", .{result.name});
@@ -317,7 +323,6 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     });
 
     bench.setTotalOperations(bench.N);
-    bench.report();
 
-    try bench.prettyPrint();
+    try bench.report();
 }
