@@ -20,7 +20,7 @@ pub fn build(b: *std.Build) void {
     setupDocumentation(b, lib);
 }
 
-fn setupLibrary(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) *std.Build.LibExeObjStep {
+fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "zbench",
         .root_source_file = .{ .path = "zbench.zig" },
@@ -34,7 +34,7 @@ fn setupLibrary(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
     return lib;
 }
 
-fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
+fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const unit_tests = b.addTest(.{
         .root_source_file = .{ .path = "zbench.zig" },
         .target = target,
@@ -51,7 +51,7 @@ fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
     }
 }
 
-fn addTestsFromDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const u8, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
+fn addTestsFromDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const u8, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const iterableDir = std.fs.cwd().openDir(dir_path, .{ .iterate = true }) catch {
         log.warn("failed to open directory: {s}", .{dir_path});
         return;
@@ -85,7 +85,7 @@ fn addTestsFromDir(b: *std.Build, test_step: *std.Build.Step, dir_path: []const 
     }
 }
 
-fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
+fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const example_step = b.step("examples", "Build examples");
     const example_names = [_][]const u8{ "basic", "bubble_sort", "sleep", "linked_list" };
 
@@ -97,14 +97,14 @@ fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.built
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
-        const zbench_mod = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
-        example.addModule("zbench", zbench_mod);
+        const zbench_mod = b.addModule("zbench", .{ .root_source_file = .{ .path = "zbench.zig" } });
+        example.root_module.addImport("zbench", zbench_mod);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }
 }
 
-fn setupDocumentation(b: *std.Build, lib: *std.Build.LibExeObjStep) void {
+fn setupDocumentation(b: *std.Build, lib: *std.Build.Step.Compile) void {
     const install_docs = b.addInstallDirectory(.{
         .source_dir = lib.getEmittedDocs(),
         .install_dir = .prefix,

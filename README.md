@@ -94,7 +94,7 @@ const zbench = @import("zbench");
 
 ### Compatibility Notes
 
-***Supported Version***: As of now, this fork of zBench is tested and supported on Zig version ***0.12.0-dev.1849+bb0f7d55e***.
+***Supported Version***: As of now, this fork of zBench is tested and supported on Zig version ***0.12.0-dev.2076+8fd15c6ca***.
 
 ## Usage
 The main type in this library is the `Benchmark` which contains the state for a single benchmark at any given time. A single instance can (and should) run several
