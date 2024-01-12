@@ -83,12 +83,6 @@ pub const Benchmark = struct {
         self.total_operations = ops;
     }
 
-    pub const Percentiles = struct {
-        p75: u64,
-        p99: u64,
-        p995: u64,
-    };
-
     pub fn quickSort(items: []u64, low: usize, high: usize) void {
         if (low < high) {
             const pivotIndex = partition(items, low, high);
@@ -139,8 +133,12 @@ pub const Benchmark = struct {
     }
 
     /// Prints a report of total operations and timing statistics.
+    /// (Similar to BenchmarkResult.prettyPrint)
     pub fn report(self: Benchmark) !void {
         const percentiles = self.calculatePercentiles();
+
+        var total_time_buffer: [128]u8 = undefined;
+        const total_time_str = try format.duration(total_time_buffer[0..], self.elapsed());
 
         var p75_buffer: [128]u8 = undefined;
         const p75_str = try format.duration(p75_buffer[0..], percentiles.p75);
@@ -167,14 +165,11 @@ pub const Benchmark = struct {
         const min_max_str = try std.fmt.bufPrint(min_max_buffer[0..], "({s} ... {s})", .{ min_str, max_str });
 
         const stdout = std.io.getStdOut().writer();
-        try stdout.print(
-            "\n{s:<22} {s:<8} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
-            .{ "benchmark", "runs", "time (avg ± σ)", "(min ... max)", "p75", "p99", "p995" },
-        );
+        prettyPrintHeader();
         try stdout.print("---------------------------------------------------------------------------------------------------------------\n", .{});
         try stdout.print(
-            "{s:<22} \x1b[90m{d:<8} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n",
-            .{ self.name, self.total_operations, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
+            "{s:<22} \x1b[90m{d:<8} \x1b[90m{s:<10} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n\n",
+            .{ self.name, self.total_operations, total_time_str, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
         );
         try stdout.print("\n", .{});
     }
@@ -210,7 +205,7 @@ pub const Benchmark = struct {
             nvar += @bitCast((d - a) * (d - a));
         }
 
-        // We are using the non-biased estimator for the variance; sum(X - μ)^2 / (n - 1)
+        // We are using the non-biased estimator for the variance; sum(Xi - μ)^2 / (n - 1)
         return std.math.sqrt(nvar / (self.durations.items.len - 1));
     }
 };
@@ -219,13 +214,69 @@ pub const Benchmark = struct {
 /// It takes a pointer to a Benchmark object.
 pub const BenchFunc = fn (*Benchmark) void;
 
-/// BenchmarkResult stores the result of a single benchmark.
-/// It includes the name and the total duration of the benchmark.
+/// BenchmarkResult stores the resulting computed metrics/statistics from a benchmark
 pub const BenchmarkResult = struct {
-    /// Name of the benchmark.
     name: []const u8,
-    /// Total duration of the benchmark in nanoseconds.
-    duration: u64,
+    percs: Percentiles,
+    avg_duration: usize,
+    std_duration: usize,
+    min_duration: usize,
+    max_duration: usize,
+    total_operations: usize,
+    total_time: usize,
+
+    /// Formats and prints the benchmark result in a readable format.
+    pub fn prettyPrint(self: BenchmarkResult, header: bool) !void {
+        var total_time_buffer: [128]u8 = undefined;
+        const total_time_str = try format.duration(total_time_buffer[0..], self.total_time);
+
+        var p75_buffer: [128]u8 = undefined;
+        const p75_str = try format.duration(p75_buffer[0..], self.percs.p75);
+
+        var p99_buffer: [128]u8 = undefined;
+        const p99_str = try format.duration(p99_buffer[0..], self.percs.p99);
+
+        var p995_buffer: [128]u8 = undefined;
+        const p995_str = try format.duration(p995_buffer[0..], self.percs.p995);
+
+        var avg_std_buffer: [128]u8 = undefined;
+        var avg_std_offset = (try format.duration(avg_std_buffer[0..], self.avg_duration)).len;
+        avg_std_offset += (try std.fmt.bufPrint(avg_std_buffer[avg_std_offset..], " ± ", .{})).len;
+        avg_std_offset += (try format.duration(avg_std_buffer[avg_std_offset..], self.std_duration)).len;
+        const avg_std_str = avg_std_buffer[0..avg_std_offset];
+
+        var min_buffer: [128]u8 = undefined;
+        const min_str = try format.duration(min_buffer[0..], self.min_duration);
+
+        var max_buffer: [128]u8 = undefined;
+        const max_str = try format.duration(max_buffer[0..], self.max_duration);
+
+        var min_max_buffer: [128]u8 = undefined;
+        const min_max_str = try std.fmt.bufPrint(min_max_buffer[0..], "({s} ... {s})", .{ min_str, max_str });
+
+        if (header) try prettyPrintHeader();
+
+        const stdout = std.io.getStdOut().writer();
+        try stdout.print(
+            "{s:<22} \x1b[90m{d:<8} \x1b[90m{s:<14} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n\n",
+            .{ self.name, self.total_operations, total_time_str, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
+        );
+    }
+};
+
+pub fn prettyPrintHeader() !void {
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print(
+        "\n{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        .{ "benchmark", "runs", "total time", "time/run (avg ± σ)", "(min ... max)", "p75", "p99", "p995" },
+    );
+    try stdout.print("-----------------------------------------------------------------------------------------------------------------------------\n", .{});
+}
+
+pub const Percentiles = struct {
+    p75: u64,
+    p99: u64,
+    p995: u64,
 };
 
 /// BenchmarkResults acts as a container for multiple benchmark results.
@@ -253,11 +304,9 @@ pub const BenchmarkResults = struct {
 
     /// Formats and prints the benchmark results in a readable format.
     pub fn prettyPrint(self: BenchmarkResults) !void {
-        const stdout = std.io.getStdOut().writer();
-        stdout.print("--------------------------------------------------------------------------------------\n", .{});
-
+        try prettyPrintHeader();
         for (self.results.items) |result| {
-            try stdout.print("{s}", .{result.name});
+            try result.prettyPrint(false);
         }
     }
 };
@@ -316,13 +365,17 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         bench.stop();
     }
 
+    bench.setTotalOperations(bench.N);
+
     const elapsed = bench.elapsed();
     try benchResult.results.append(BenchmarkResult{
         .name = bench.name,
-        .duration = elapsed,
+        .percs = bench.calculatePercentiles(),
+        .avg_duration = bench.calculateAverage(),
+        .std_duration = bench.calculateStd(),
+        .min_duration = bench.min_duration,
+        .max_duration = bench.max_duration,
+        .total_time = elapsed,
+        .total_operations = bench.total_operations,
     });
-
-    bench.setTotalOperations(bench.N);
-
-    try bench.report();
 }

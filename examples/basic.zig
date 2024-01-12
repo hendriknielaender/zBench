@@ -25,4 +25,5 @@ test "bench test basic" {
     };
     defer benchmarkResults.results.deinit();
     try zbench.run(myBenchmark, &bench, &benchmarkResults);
+    try benchmarkResults.prettyPrint();
 }
