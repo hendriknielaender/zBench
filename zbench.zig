@@ -8,17 +8,33 @@ const log = std.log.scoped(.zbench);
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
 
-/// Benchmark is a type representing a single benchmark session.
+/// Benchmark is a type containing state for a single benchmark session.
 /// It provides metrics and utilities for performance measurement.
 pub const Benchmark = struct {
-    /// Name of the benchmark.
-    name: []const u8,
-    /// Number of iterations to be performed in the benchmark.
+    pub const Percentiles = struct {
+        p75: u64,
+        p99: u64,
+        p995: u64,
+    };
+
+    pub const RunArgs = struct {
+        /// Name of the benchmark
+        name: []const u8 = "benchmark",
+        /// Maximum runs (or iterations) benchmark-runner should perform
+        max_runs: u64 = 65536,
+        /// Maximum time (in nanoseconds) we are willing to wait for the benchmark-runner
+        max_time: u64 = 2_000_000_000,
+        /// Allocator to be used by the benchmark-runner. If null then
+        /// the same allocator from the `Benchmark` instance is used instead
+        alloc: ?std.mem.Allocator = null,
+    };
+
+    /// Number of runs (or iterations) to be performed in the benchmark.
     N: usize = 1,
     /// Timer used to track the duration of the benchmark.
     timer: std.time.Timer,
-    /// Total number of operations performed during the benchmark.
-    total_operations: usize = 0,
+    /// Total number of benchmark runs (or iterations) that have been performed
+    total_runs: usize = 0,
     /// Minimum duration recorded among all runs (initially set to the maximum possible value).
     min_duration: u64 = std.math.maxInt(u64),
     /// Maximum duration recorded among all runs.
@@ -31,16 +47,146 @@ pub const Benchmark = struct {
     allocator: std.mem.Allocator,
 
     /// Initializes a new Benchmark instance.
-    /// name: A string representing the benchmark's name.
     /// allocator: Memory allocator to be used.
-    pub fn init(name: []const u8, allocator: std.mem.Allocator) !Benchmark {
+    pub fn init(allocator: std.mem.Allocator) !Benchmark {
         const bench = Benchmark{
-            .name = name,
             .allocator = allocator,
             .timer = std.time.Timer.start() catch return error.TimerUnsupported,
             .durations = std.ArrayList(u64).init(allocator),
         };
         return bench;
+    }
+
+    /// Executes a benchmark-runner within the context of a given Benchmark object. Note
+    /// that this function calls `Benchmark.reset` at the start, and so all contained
+    /// state is discarded and replaced.
+    ///
+    /// benchResult: A pointer to BenchmarkResults to store the results.
+    /// run_args: Various parameters for the benchmark
+    /// Runner: The benchmark-runner. Must be one of either -
+    ///     Standalone function with *either* of the following signature/function type -
+    ///         1: fn (std.mem.Allocator) void          : Required
+    ///         2: fn (*zbench.Benchmark) void          : Required
+    ///
+    ///     Aggregate (Struct/Union/Enum) with following associated methods -
+    ///         pub fn init(std.mem.Allocator) !Self    : Required
+    ///         pub fn run(Self) void                   : Required
+    ///         pub fn deinit(Self) void                : Optional
+    ///         pub fn reset(Self) void                 : Optional
+    ///
+    /// NOTE:
+    ///     The function signatures must match or non-sensical compilation-errors may ensue
+    ///
+    ///     `*Self` instead of `Self` also works for the above methods.
+    ///
+    ///     If `reset` is not supplied, the runner instance is "deinited" and
+    ///     "inited" between every run (which may slowdown your benchmark-suite).
+    pub fn run(self: *Benchmark, comptime Runner: anytype, bench_results: *BenchmarkResults, run_args: RunArgs) !void {
+        try bench_results.results.append(try self.runSingle(Runner, run_args));
+    }
+
+    /// Similar to `Benchmark.run`, but this function can be used when we
+    /// aren't interested in gathering a large collection of results and so
+    /// returns the BenchmarkResult directly
+    pub fn runSingle(self: *Benchmark, comptime Runner: anytype, run_args: RunArgs) !BenchmarkResult {
+        self.reset();
+        const err_msg = "Benchmark.run: `Runner` must be an aggregate (Enum, Union or Struct), or a function.\nIf a function, it must have the signature `fn (std.mem.Allocator) void` or `fn (*zbench.Benchmark) void`";
+
+        comptime var has_init: bool = false;
+        comptime var has_run: bool = false;
+        comptime var has_reset: bool = false;
+        comptime var has_deinit: bool = false;
+        var run_arg = if (@TypeOf(Runner) == type) b: { // We hit this branch when `Runner` is an aggregate
+            const err_msg_aggregate = "Benchmark.run: `Runner` did not have both `run` and `init` as associated methods";
+
+            const decls = switch (@typeInfo(Runner)) {
+                .Struct => |agr| agr.decls,
+                .Union => |agr| agr.decls,
+                .Enum => |agr| agr.decls,
+
+                else => @compileError(err_msg),
+            };
+
+            comptime for (decls) |dec| {
+                if (std.mem.eql(u8, dec.name, "reset")) {
+                    has_reset = true;
+                } else if (std.mem.eql(u8, dec.name, "deinit")) {
+                    has_deinit = true;
+                } else if (std.mem.eql(u8, dec.name, "init")) {
+                    has_init = true;
+                } else if (std.mem.eql(u8, dec.name, "run")) {
+                    has_run = true;
+                }
+            };
+
+            comptime if (has_init == false or has_run == false)
+                @compileError(err_msg_aggregate);
+
+            break :b try Runner.init(self.allocator);
+        } else b: { // We hit this branch when `Runner` is a standalone function
+            if (@TypeOf(Runner) == fn (std.mem.Allocator) void) {
+                if (run_args.alloc) |a| break :b a else break :b self.allocator;
+            } else if (@TypeOf(Runner) == fn (*Benchmark) void)
+                break :b self
+            else
+                @compileError(err_msg);
+        };
+
+        // First we do some trial runs to warm up the system and get a time-estimate
+        // of how long each benchmar-run will take including init/deinit or reset
+        const trial_runs = @max(run_args.max_runs / 32, 10);
+        const trial_time = @max(run_args.max_time / 32, 5_000);
+        while (self.total_duration < trial_time and self.total_runs < trial_runs) {
+            // All of these branches evaluate at compile-time!
+            self.start();
+            if (has_init) run_arg.run() else Runner(run_arg);
+
+            self.total_runs += 1;
+
+            if (has_reset) {
+                run_arg.reset();
+                continue;
+            } else if (has_deinit)
+                run_arg.deinit();
+            if (has_init) run_arg = try Runner.init(self.allocator);
+            self.stop();
+        }
+
+        // Make an estimate for the number of runs to be performed. Here we take the smallest of
+        // max_runner_time / avg_runner_time and max_runner_runs.
+        self.N = @min(run_args.max_time / (self.calculateAverage() + 1), run_args.max_runs);
+
+        // Now that we have obtained a reasonable value for the number of iterations
+        // we can perform the actual benchmark-runs
+        self.reset();
+        for (0..self.N) |_| {
+            self.start();
+            if (has_init) run_arg.run() else Runner(run_arg);
+            self.stop();
+
+            if (has_reset) {
+                run_arg.reset();
+                continue;
+            } else if (has_deinit)
+                run_arg.deinit();
+            if (has_init) run_arg = try Runner.init(self.allocator);
+        }
+        self.setTotalRuns(self.N);
+
+        if (has_deinit) run_arg.deinit();
+
+        const ret = BenchmarkResult{
+            .name = run_args.name,
+            .percs = self.calculatePercentiles(),
+            .avg_duration = self.calculateAverage(),
+            .std_duration = self.calculateStd(),
+            .min_duration = self.min_duration,
+            .max_duration = self.max_duration,
+            .total_runs = self.total_runs,
+            .total_time = self.elapsed(),
+        };
+
+        return ret;
     }
 
     /// Starts or restarts the benchmark timer.
@@ -61,7 +207,7 @@ pub const Benchmark = struct {
 
     /// Reset the benchmark
     pub fn reset(self: *Benchmark) void {
-        self.total_operations = 0;
+        self.total_runs = 0;
         self.min_duration = std.math.maxInt(u64);
         self.max_duration = 0;
         self.total_duration = 0;
@@ -77,10 +223,10 @@ pub const Benchmark = struct {
         return sum;
     }
 
-    /// Sets the total number of operations performed.
-    /// ops: Number of operations.
-    pub fn setTotalOperations(self: *Benchmark, ops: usize) void {
-        self.total_operations = ops;
+    /// Sets the total number of runs performed.
+    /// ops: Number of runs.
+    pub fn setTotalRuns(self: *Benchmark, ops: usize) void {
+        self.total_runs = ops;
     }
 
     pub fn quickSort(items: []u64, low: usize, high: usize) void {
@@ -132,6 +278,8 @@ pub const Benchmark = struct {
         return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
+    // NOTE: Decide if this function should be removed as this is just
+    // a duplicate of `BenchmarkResult.prettyPrint`
     /// Prints a report of total operations and timing statistics.
     /// (Similar to BenchmarkResult.prettyPrint)
     pub fn report(self: Benchmark) !void {
@@ -169,7 +317,7 @@ pub const Benchmark = struct {
         try stdout.print("---------------------------------------------------------------------------------------------------------------\n", .{});
         try stdout.print(
             "{s:<22} \x1b[90m{d:<8} \x1b[90m{s:<10} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n\n",
-            .{ self.name, self.total_operations, total_time_str, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
+            .{ self.name, self.total_runs, total_time_str, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
         );
         try stdout.print("\n", .{});
     }
@@ -210,19 +358,15 @@ pub const Benchmark = struct {
     }
 };
 
-/// BenchFunc is a function type that represents a benchmark function.
-/// It takes a pointer to a Benchmark object.
-pub const BenchFunc = fn (*Benchmark) void;
-
 /// BenchmarkResult stores the resulting computed metrics/statistics from a benchmark
 pub const BenchmarkResult = struct {
     name: []const u8,
-    percs: Percentiles,
+    percs: Benchmark.Percentiles,
     avg_duration: usize,
     std_duration: usize,
     min_duration: usize,
     max_duration: usize,
-    total_operations: usize,
+    total_runs: usize,
     total_time: usize,
 
     /// Formats and prints the benchmark result in a readable format.
@@ -259,7 +403,7 @@ pub const BenchmarkResult = struct {
         const stdout = std.io.getStdOut().writer();
         try stdout.print(
             "{s:<22} \x1b[90m{d:<8} \x1b[90m{s:<14} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n\n",
-            .{ self.name, self.total_operations, total_time_str, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
+            .{ self.name, self.total_runs, total_time_str, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
         );
     }
 };
@@ -272,12 +416,6 @@ pub fn prettyPrintHeader() !void {
     );
     try stdout.print("-----------------------------------------------------------------------------------------------------------------------------\n", .{});
 }
-
-pub const Percentiles = struct {
-    p75: u64,
-    p99: u64,
-    p995: u64,
-};
 
 /// BenchmarkResults acts as a container for multiple benchmark results.
 /// It provides functionality to format and print these results.
@@ -310,72 +448,3 @@ pub const BenchmarkResults = struct {
         }
     }
 };
-
-/// Executes a benchmark function within the context of a given Benchmark object.
-/// func: The benchmark function to be executed.
-/// bench: A pointer to a Benchmark object for tracking the benchmark.
-/// benchResult: A pointer to BenchmarkResults to store the results.
-pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
-    defer bench.durations.deinit();
-    const MIN_DURATION = 1_000_000_000; // minimum benchmark time in nanoseconds (1 second)
-    const MAX_N = 65536; // maximum number of executions for the final benchmark run
-    const MAX_ITERATIONS = 16384; // Define a maximum number of iterations
-
-    bench.N = 1; // initial value; will be updated...
-    var duration: u64 = 0;
-    var iterations: usize = 0; // Add an iterations counter
-
-    // increase N until we've run for a sufficiently long time or exceeded max_iterations
-    while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
-        bench.reset();
-
-        bench.start();
-        var j: usize = 0;
-        while (j < bench.N) : (j += 1) {
-            func(bench);
-        }
-
-        bench.stop();
-        // double N for next iteration
-        if (bench.N < MAX_N / 2) {
-            bench.N *= 2;
-        } else {
-            bench.N = MAX_N;
-        }
-
-        iterations += 1; // Increase the iteration counter
-        duration += bench.elapsed(); // ...and duration
-    }
-
-    // Safety first: make sure the recorded durations aren't all-zero
-    if (duration == 0) duration = 1;
-
-    // Adjust N based on the actual duration achieved
-    bench.N = @intCast((bench.N * MIN_DURATION) / duration);
-    // check that N doesn't go out of bounds
-    if (bench.N == 0) bench.N = 1;
-    if (bench.N > MAX_N) bench.N = MAX_N;
-
-    // Now run the benchmark with the adjusted N value
-    bench.reset();
-    var j: usize = 0;
-    while (j < bench.N) : (j += 1) {
-        bench.start();
-        func(bench);
-        bench.stop();
-    }
-
-    bench.setTotalOperations(bench.N);
-
-    const elapsed = bench.elapsed();
-    try benchResult.results.append(BenchmarkResult{
-        .name = bench.name,
-        .percs = bench.calculatePercentiles(),
-        .avg_duration = bench.calculateAverage(),
-        .std_duration = bench.calculateStd(),
-        .min_duration = bench.min_duration,
-        .max_duration = bench.max_duration,
-        .total_time = elapsed,
-        .total_operations = bench.total_operations,
-    });
-}
