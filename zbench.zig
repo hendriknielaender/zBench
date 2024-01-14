@@ -29,6 +29,9 @@ pub const Benchmark = struct {
         alloc: ?std.mem.Allocator = null,
     };
 
+    /// Divisor used to decide the number of trial runs to perform
+    pub const TRIAL_RUN_DIV: u64 = 32;
+
     /// Number of runs (or iterations) to be performed in the benchmark.
     N: usize = 1,
     /// Timer used to track the duration of the benchmark.
@@ -134,8 +137,10 @@ pub const Benchmark = struct {
 
         // First we do some trial runs to warm up the system and get a time-estimate
         // of how long each benchmar-run will take including init/deinit or reset
-        const trial_runs = @max(run_args.max_runs / 32, 10);
-        const trial_time = @max(run_args.max_time / 32, 5_000);
+        // The idea is to do a fraction of the total number of runs, hence division by
+        // `TRIAL_RUN_DIV`
+        const trial_runs = @max(run_args.max_runs / TRIAL_RUN_DIV, 10);
+        const trial_time = @max(run_args.max_time / TRIAL_RUN_DIV, 10_000);
         while (self.total_duration < trial_time and self.total_runs < trial_runs) {
             // All of these branches evaluate at compile-time!
             self.start();

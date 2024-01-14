@@ -117,10 +117,11 @@ test "Benchmark.run with struct runner with init, run and deinit" {
     // The runner should have been initialised as many times as it got deinitialised
     try expectEq(Runner.init_count, Runner.deinit_count);
 
-    // The runner should have been initialised as many times as max_runs + max_runs / 32 + 1
+    // The runner should have been initialised as many times as
+    // max_runs + max_runs / Benchmark.TRIAL_RUN_DIV + 1
     // FIXME: (The +1 is due to us initializing at the very end of the bench-loop despite not using
     // the runner afterwards..
-    try expectEq(Runner.init_count, 33 * run_args.max_runs / 32 + 1);
+    try expectEq(Runner.init_count, (Benchmark.TRIAL_RUN_DIV+1) * run_args.max_runs / Benchmark.TRIAL_RUN_DIV + 1);
 }
 
 test "Benchmark.run with complete bench-runner struct" {
@@ -166,7 +167,9 @@ test "Benchmark.run with complete bench-runner struct" {
     try expectEq(@as(usize, 1), Runner.deinit_count);
 
     // However it should have been reseted as many times as there are runs minus the trial-runs
-    try expectEq(run_args.max_runs, Runner.reset_count - run_args.max_runs / 32);
+    try expectEq(
+        run_args.max_runs, Runner.reset_count - run_args.max_runs / Benchmark.TRIAL_RUN_DIV
+    );
 }
 
 test "Benchmark.quickSort" {
