@@ -8,6 +8,13 @@ const log = std.log.scoped(.zbench);
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
 
+pub const Config = struct {
+    iterations: u16 = 0,
+    max_iterations: u16 = 16384,
+    budget: u64 = 2e9, // 2 seconds
+    display_system_info: bool = false,
+};
+
 /// Benchmark is a type representing a single benchmark session.
 /// It provides metrics and utilities for performance measurement.
 pub const Benchmark = struct {
@@ -29,17 +36,21 @@ pub const Benchmark = struct {
     durations: std.ArrayList(u64),
     /// Memory allocator used by the benchmark.
     allocator: std.mem.Allocator,
+    /// Configuration settings
+    config: Config,
 
     /// Initializes a new Benchmark instance.
     /// name: A string representing the benchmark's name.
     /// allocator: Memory allocator to be used.
-    pub fn init(name: []const u8, allocator: std.mem.Allocator) !Benchmark {
+    pub fn init(name: []const u8, allocator: std.mem.Allocator, config: Config) !Benchmark {
         const bench = Benchmark{
             .name = name,
             .allocator = allocator,
+            .config = config,
             .timer = std.time.Timer.start() catch return error.TimerUnsupported,
             .durations = std.ArrayList(u64).init(allocator),
         };
+
         return bench;
     }
 
@@ -177,6 +188,11 @@ pub const Benchmark = struct {
             .{ self.name, self.total_operations, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
         );
         try stdout.print("\n", .{});
+
+        if (self.config.display_system_info) {
+            // TODO: display system informations like cpu, zig version etc.
+            log.info("[NOT IMPLEMENTED] System Information: ...", .{});
+        }
     }
 
     /// Calculate the average duration
@@ -268,44 +284,49 @@ pub const BenchmarkResults = struct {
 /// benchResult: A pointer to BenchmarkResults to store the results.
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
     defer bench.durations.deinit();
-    const MIN_DURATION = 1_000_000_000; // minimum benchmark time in nanoseconds (1 second)
+    const MIN_DURATION = bench.config.budget; // minimum benchmark time in nanoseconds (1 second)
     const MAX_N = 65536; // maximum number of executions for the final benchmark run
-    const MAX_ITERATIONS = 16384; // Define a maximum number of iterations
+    const MAX_ITERATIONS = bench.config.max_iterations; // Define a maximum number of iterations
 
-    bench.N = 1; // initial value; will be updated...
-    var duration: u64 = 0;
-    var iterations: usize = 0; // Add an iterations counter
+    if (bench.config.iterations != 0) {
+        // If user-defined iterations are specified, use them directly
+        bench.N = bench.config.iterations;
+    } else {
+        bench.N = 1; // initial value; will be updated...
+        var duration: u64 = 0;
+        var iterations: usize = 0; // Add an iterations counter
 
-    // increase N until we've run for a sufficiently long time or exceeded max_iterations
-    while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
-        bench.reset();
+        // increase N until we've run for a sufficiently long time or exceeded max_iterations
+        while (duration < MIN_DURATION and iterations < MAX_ITERATIONS) {
+            bench.reset();
 
-        bench.start();
-        var j: usize = 0;
-        while (j < bench.N) : (j += 1) {
-            func(bench);
+            bench.start();
+            var j: usize = 0;
+            while (j < bench.N) : (j += 1) {
+                func(bench);
+            }
+
+            bench.stop();
+            // double N for next iteration
+            if (bench.N < MAX_N / 2) {
+                bench.N *= 2;
+            } else {
+                bench.N = MAX_N;
+            }
+
+            iterations += 1; // Increase the iteration counter
+            duration += bench.elapsed(); // ...and duration
         }
 
-        bench.stop();
-        // double N for next iteration
-        if (bench.N < MAX_N / 2) {
-            bench.N *= 2;
-        } else {
-            bench.N = MAX_N;
-        }
+        // Safety first: make sure the recorded durations aren't all-zero
+        if (duration == 0) duration = 1;
 
-        iterations += 1; // Increase the iteration counter
-        duration += bench.elapsed(); // ...and duration
+        // Adjust N based on the actual duration achieved
+        bench.N = @intCast((bench.N * MIN_DURATION) / duration);
+        // check that N doesn't go out of bounds
+        if (bench.N == 0) bench.N = 1;
+        if (bench.N > MAX_N) bench.N = MAX_N;
     }
-
-    // Safety first: make sure the recorded durations aren't all-zero
-    if (duration == 0) duration = 1;
-
-    // Adjust N based on the actual duration achieved
-    bench.N = @intCast((bench.N * MIN_DURATION) / duration);
-    // check that N doesn't go out of bounds
-    if (bench.N == 0) bench.N = 1;
-    if (bench.N > MAX_N) bench.N = MAX_N;
 
     // Now run the benchmark with the adjusted N value
     bench.reset();
