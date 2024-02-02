@@ -18,4 +18,5 @@ test "bench test sleepy" {
     };
     defer benchmarkResults.results.deinit();
     try zbench.run(sleepBenchmark, &bench, &benchmarkResults);
+    try benchmarkResults.prettyPrint();
 }

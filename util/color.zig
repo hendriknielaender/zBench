@@ -8,6 +8,7 @@ pub const Color = enum {
     magenta,
     cyan,
     reset,
+    none,
 
     // Return the ANSI escape code for this color.
     pub fn code(self: Color) []const u8 {
@@ -19,11 +20,7 @@ pub const Color = enum {
             .magenta => "\x1b[35m",
             .cyan => "\x1b[36m",
             .reset => "\x1b[0m",
+            .none => "",
         };
     }
 };
-
-pub fn colorPrint(color: Color, text: []const u8) !void {
-    const stdout = std.io.getStdOut().writer();
-    try stdout.print("{}{}{}", .{ color.code(), text, Color.reset.code() });
-}
