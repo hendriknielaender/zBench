@@ -235,7 +235,7 @@ pub const BenchmarkResult = struct {
     /// 75th, 99th and 99.5th percentiles of the recorded durations. They represent the timings below
     /// which 75%, 99% and 99.5% of the other measurments would lie, respectively, when timings
     /// are sorted in increasing order.
-    percs: Benchmark.Percentiles,
+    percentiles: Benchmark.Percentiles,
     /// The average (more precisely arithmetic mean) of the recorded durations
     avg_duration: usize,
     /// The standard-deviation of the recorded durations (an estimate for the average *deviation* from
@@ -250,81 +250,19 @@ pub const BenchmarkResult = struct {
     /// Total time for all the operations (or runs) of the benchmark combined
     total_time: usize,
 
-    /// Pretty-prints the name of the benchmark
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
-    pub fn prettyPrintName(self: Self, writer: anytype, color: Color) !void {
-        try writer.print("{s}{s:<22}{s} ", .{ color.code(), self.name, Color.reset.code() });
-    }
-
-    /// Pretty-prints the number of total operations (or runs) of the benchmark performed
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
-    pub fn prettyPrintTotalOperations(self: Self, writer: anytype, color: Color) !void {
-        try writer.print("{s}{d:<8}{s} ", .{ color.code(), self.total_operations, Color.reset.code() });
-    }
-
-    /// Pretty-prints the total time it took to perform all the runs
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
-    pub fn prettyPrintTotalTime(self: Self, writer: anytype, color: Color) !void {
-        var buffer: [128]u8 = undefined;
-        const str = try format.duration(buffer[0..], self.total_time);
-
-        try writer.print("{s}{s:<14}{s} ", .{ color.code(), str, Color.reset.code() });
-    }
-
-    /// Pretty-prints the average (arithmetic mean) and the standard deviation of the durations
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
-    pub fn prettyPrintAvgStd(self: Self, writer: anytype, color: Color) !void {
-        var buffer: [128]u8 = undefined;
-        var avg_std_offset = (try format.duration(buffer[0..], self.avg_duration)).len;
-        avg_std_offset += (try std.fmt.bufPrint(buffer[avg_std_offset..], " ± ", .{})).len;
-        avg_std_offset += (try format.duration(buffer[avg_std_offset..], self.std_duration)).len;
-        const str = buffer[0..avg_std_offset];
-
-        try writer.print("{s}{s:<22}{s} ", .{ color.code(), str, Color.reset.code() });
-    }
-
-    /// Pretty-prints the minumim and maximum duration
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
-    pub fn prettyPrintMinMax(self: Self, writer: anytype, color: Color) !void {
-        var min_buffer: [128]u8 = undefined;
-        const min_str = try format.duration(min_buffer[0..], self.min_duration);
-
-        var max_buffer: [128]u8 = undefined;
-        const max_str = try format.duration(max_buffer[0..], self.max_duration);
-
-        var buffer: [128]u8 = undefined;
-        const str = try std.fmt.bufPrint(buffer[0..], "({s} ... {s})", .{ min_str, max_str });
-
-        try writer.print("{s}{s:<28}{s} ", .{ color.code(), str, Color.reset.code() });
-    }
-
-    /// Pretty-prints the 75th, 99th and 99.5th percentile of the durations
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
-    pub fn prettyPrintPercentiles(self: Self, writer: anytype, color: Color) !void {
-        var p75_buffer: [128]u8 = undefined;
-        const p75_str = try format.duration(p75_buffer[0..], self.percs.p75);
-
-        var p99_buffer: [128]u8 = undefined;
-        const p99_str = try format.duration(p99_buffer[0..], self.percs.p99);
-
-        var p995_buffer: [128]u8 = undefined;
-        const p995_str = try format.duration(p995_buffer[0..], self.percs.p995);
-
-        try writer.print("{s}{s:<10} {s:<10} {s:<10}{s} ", .{ color.code(), p75_str, p99_str, p995_str, Color.reset.code() });
-    }
-
     /// Formats and prints the benchmark-result in a readable format.
     /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
     /// header: Whether to pretty-print the header or not
     pub fn prettyPrint(self: Self, writer: anytype, header: bool) !void {
         if (header) try prettyPrintHeader(writer);
 
-        try self.prettyPrintName(writer, Color.none);
-        try self.prettyPrintTotalOperations(writer, Color.cyan);
-        try self.prettyPrintTotalTime(writer, Color.cyan);
-        try self.prettyPrintAvgStd(writer, Color.green);
-        try self.prettyPrintMinMax(writer, Color.blue);
-        try self.prettyPrintPercentiles(writer, Color.cyan);
+        try format.prettyPrintName(self.name, writer, Color.none);
+        try format.prettyPrintTotalOperations(self.total_operations, writer, Color.cyan);
+        try format.prettyPrintTotalTime(self.total_time, writer, Color.cyan);
+        try format.prettyPrintAvgStd(self.avg_durations, self.std_durations, writer, Color.green);
+        try format.prettyPrintMinMax(self.min_durations, self.max_durations, writer, Color.blue);
+        try format.prettyPrintPercentiles(self.percentiles.p75, self.percentiles.p99, self.percentiles.p995, writer, Color.cyan);
+
         _ = try writer.write("\n");
     }
 };
@@ -371,13 +309,12 @@ pub const BenchmarkResults = struct {
         var writer = self.out_stream.writer();
         try prettyPrintHeader(writer);
         for (self.results.items) |result| {
-            try result.prettyPrintName(writer, Color.none);
-            try result.prettyPrintTotalOperations(writer, Color.cyan);
-            try result.prettyPrintTotalTime(writer, self.getColor(result.total_time));
-            try result.prettyPrintAvgStd(writer, Color.green);
-            try result.prettyPrintMinMax(writer, Color.blue);
-            try result.prettyPrintPercentiles(writer, Color.cyan);
-            _ = try writer.write("\n");
+            try format.prettyPrintName(result.name, writer, Color.none);
+            try format.prettyPrintTotalOperations(result.total_operations, writer, Color.cyan);
+            try format.prettyPrintTotalTime(result.total_time, writer, Color.cyan);
+            try format.prettyPrintAvgStd(result.avg_duration, result.std_duration, writer, Color.green);
+            try format.prettyPrintMinMax(result.min_duration, result.max_duration, writer, Color.blue);
+            try format.prettyPrintPercentiles(result.percentiles.p75, result.percentiles.p99, result.percentiles.p995, writer, Color.cyan);
         }
 
         try self.out_stream.flush();
@@ -443,7 +380,7 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     const elapsed = bench.elapsed();
     try benchResult.results.append(BenchmarkResult{
         .name = bench.name,
-        .percs = bench.calculatePercentiles(),
+        .percentiles = bench.calculatePercentiles(),
         .avg_duration = bench.calculateAverage(),
         .std_duration = bench.calculateStd(),
         .min_duration = bench.min_duration,
