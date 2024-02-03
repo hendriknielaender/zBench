@@ -6,7 +6,7 @@ const expectEq = std.testing.expectEqual;
 const Benchmark = @import("./zbench.zig").Benchmark;
 
 test "Benchmark.calculateStd and Benchmark.calculateAverage" {
-    var bench = try Benchmark.init("test_bench", std.testing.allocator);
+    var bench = try Benchmark.init("test_bench", std.testing.allocator, .{});
     defer bench.durations.deinit();
 
     try expectEq(@as(u64, 0), bench.calculateAverage());
