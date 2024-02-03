@@ -17,7 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: goto-bus-stop/setup-zig@v2
-
+        with:
+          version: 0.12.0-dev.2543+9eda6ccef
       - run: zig build test
   build-examples:
     strategy:
@@ -27,7 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: goto-bus-stop/setup-zig@v2
-
+        with:
+          version: 0.12.0-dev.2543+9eda6ccef
       - run: zig build test_examples
   lint:
     runs-on: ubuntu-latest
