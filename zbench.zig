@@ -8,10 +8,26 @@ const log = std.log.scoped(.zbench);
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
 
+/// Configuration for benchmarking.
+/// This struct holds settings to control the behavior of benchmark executions.
 pub const Config = struct {
+    /// Number of iterations the benchmark has been run. Initialized to 0.
+    /// If 0 then zBench will calculate an value.
     iterations: u16 = 0,
+
+    /// Maximum number of iterations the benchmark can run. Default is 16384.
+    /// This limit helps to avoid excessively long benchmark runs.
     max_iterations: u16 = 16384,
-    budget: u64 = 2e9, // 2 seconds
+
+    /// Time budget for the benchmark in nanoseconds. Default is 2e9 (2 seconds).
+    /// This value is used to determine how long a single benchmark should be allowed to run
+    /// before concluding. Helps in avoiding long-running benchmarks.
+    time_budget: u64 = 2e9, // 2 seconds
+
+    /// Flag to indicate whether system information should be displayed. Default is false.
+    /// If true, detailed system information (e.g., CPU, memory) will be displayed
+    /// along with the benchmark results. Useful for understanding the environment
+    /// in which the benchmarks were run.
     display_system_info: bool = false,
 };
 
@@ -335,7 +351,7 @@ pub const BenchmarkResults = struct {
 /// benchResult: A pointer to BenchmarkResults to store the results.
 pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkResults) !void {
     defer bench.durations.deinit();
-    const MIN_DURATION = bench.config.budget; // minimum benchmark time in nanoseconds (1 second)
+    const MIN_DURATION = bench.config.time_budget; // minimum benchmark time in nanoseconds (1 second)
     const MAX_N = 65536; // maximum number of executions for the final benchmark run
     const MAX_ITERATIONS = bench.config.max_iterations; // Define a maximum number of iterations
 
