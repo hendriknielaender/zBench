@@ -175,7 +175,7 @@ pub const Benchmark = struct {
         const min_max_str = try std.fmt.bufPrint(min_max_buffer[0..], "({s} ... {s})", .{ min_str, max_str });
 
         const stdout = std.io.getStdOut().writer();
-        prettyPrintHeader();
+        format.prettyPrintHeader();
         try stdout.print("---------------------------------------------------------------------------------------------------------------\n", .{});
         try stdout.print(
             "{s:<22} \x1b[90m{d:<8} \x1b[90m{s:<10} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n\n",
@@ -254,7 +254,7 @@ pub const BenchmarkResult = struct {
     /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
     /// header: Whether to pretty-print the header or not
     pub fn prettyPrint(self: Self, writer: anytype, header: bool) !void {
-        if (header) try prettyPrintHeader(writer);
+        if (header) try format.prettyPrintHeader(writer);
 
         try format.prettyPrintName(self.name, writer, Color.none);
         try format.prettyPrintTotalOperations(self.total_operations, writer, Color.cyan);
@@ -266,16 +266,6 @@ pub const BenchmarkResult = struct {
         _ = try writer.write("\n");
     }
 };
-
-/// Pretty-prints the header for the result pretty-print table
-/// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
-pub fn prettyPrintHeader(writer: anytype) !void {
-    try writer.print(
-        "\n{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
-        .{ "benchmark", "runs", "total time", "time/run (avg ± σ)", "(min ... max)", "p75", "p99", "p995" },
-    );
-    try writer.print("-----------------------------------------------------------------------------------------------------------------------------\n", .{});
-}
 
 /// BenchmarkResults acts as a container for multiple benchmark results.
 /// It provides functionality to format and print these results.
@@ -307,14 +297,16 @@ pub const BenchmarkResults = struct {
     /// Formats and prints the benchmark results in a readable format.
     pub fn prettyPrint(self: *BenchmarkResults) !void {
         var writer = self.out_stream.writer();
-        try prettyPrintHeader(writer);
+        try format.prettyPrintHeader(writer);
         for (self.results.items) |result| {
             try format.prettyPrintName(result.name, writer, Color.none);
             try format.prettyPrintTotalOperations(result.total_operations, writer, Color.cyan);
-            try format.prettyPrintTotalTime(result.total_time, writer, Color.cyan);
+            try format.prettyPrintTotalTime(result.total_time, writer, self.getColor(result.total_time));
             try format.prettyPrintAvgStd(result.avg_duration, result.std_duration, writer, Color.green);
             try format.prettyPrintMinMax(result.min_duration, result.max_duration, writer, Color.blue);
             try format.prettyPrintPercentiles(result.percentiles.p75, result.percentiles.p99, result.percentiles.p995, writer, Color.cyan);
+
+            _ = try writer.write("\n");
         }
 
         try self.out_stream.flush();
