@@ -20,7 +20,7 @@ jobs:
         with:
           version: 0.11.0
       - run: zig build test
-  build-examples-stable:
+  build-examples:
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -30,17 +30,6 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v2
         with:
           version: 0.11.0
-      - run: zig build test_examples
-  build-examples-master:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{matrix.os}}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: goto-bus-stop/setup-zig@v2
-        with:
-          version: master
       - run: zig build test_examples
   lint:
     runs-on: ubuntu-latest
