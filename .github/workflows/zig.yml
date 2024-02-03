@@ -20,7 +20,7 @@ jobs:
         with:
           version: 0.11.0
       - run: zig build test
-  build-examples-stable:
+  build-examples:
     strategy:
       matrix:
         os: [ubuntu-latest]
