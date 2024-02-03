@@ -100,11 +100,34 @@ fn benchmarkMyFunction(b: *zbench.Benchmark) void {
 You can then run your benchmarks in a test:
 ```zig
 test "bench test" {
-    var allocator = std.heap.page_allocator;
-    var b = try zBench.Benchmark.init("benchmarkMyFunction", &allocator);
-    try zBench.run(benchmarkMyFunction, &b);
+    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
+    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator, .{ .iterations = 10 });
+    var benchmarkResults = zbench.BenchmarkResults{
+        .results = resultsAlloc,
+    };
+    defer benchmarkResults.results.deinit();
+    try zbench.run(myBenchmark, &bench, &benchmarkResults);
+    try benchmarkResults.prettyPrint();
 }
 ```
+
+## Configuration
+
+To customize your benchmark runs, zBench provides a `Config` struct that allows you to specify several options:
+
+```zig
+pub const Config = struct {
+    iterations: u16 = 0,
+    max_iterations: u16 = 16384,
+    time_budget: u64 = 2e9, // 2 seconds
+    display_system_info: bool = false,
+};
+```
+
+- `iterations`: The number of iterations the benchmark has been run. This field is usually managed by zBench itself.
+- `max_iterations`: Set the maximum number of iterations for a benchmark. Useful for controlling long-running benchmarks.
+- `time_budget`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
+- `display_system_info`: Enable or disable displaying system information alongside the benchmark results.
 
 ### Compatibility Notes
 Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users.
