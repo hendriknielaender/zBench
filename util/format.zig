@@ -20,6 +20,16 @@ pub fn duration(buffer: []u8, d: u64) ![]u8 {
     return formatted;
 }
 
+/// Pretty-prints the header for the result pretty-print table
+/// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
+pub fn prettyPrintHeader(writer: anytype) !void {
+    try writer.print(
+        "\n{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        .{ "benchmark", "runs", "total time", "time/run (avg ± σ)", "(min ... max)", "p75", "p99", "p995" },
+    );
+    try writer.print("-----------------------------------------------------------------------------------------------------------------------------\n", .{});
+}
+
 /// Pretty-prints the name of the benchmark
 /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
 pub fn prettyPrintName(name: []const u8, writer: anytype, color: Color) !void {
