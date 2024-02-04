@@ -121,16 +121,15 @@ pub const Benchmark = struct {
     pub fn quickSort(items: []u64, initialStart: usize, end: usize) void {
         if (initialStart < end) {
             const pivotIndex = partition(items, initialStart, end);
-            quickSort(items, initialStart, pivotIndex); // Use initialStart to avoid shadowing
+            quickSort(items, initialStart, pivotIndex);
             quickSort(items, pivotIndex + 1, end);
         }
     }
 
     fn partition(items: []u64, partitionStart: usize, end: usize) usize {
         const pivot = items[end - 1];
-        var i = partitionStart; // Renamed to avoid shadowing
+        var i = partitionStart;
 
-        // Iterate using indices directly to avoid const qualifier issue
         for (partitionStart..end - 1) |index| {
             if (items[index] < pivot) {
                 std.mem.swap(u64, &items[i], &items[index]);
