@@ -134,7 +134,7 @@ pub const Benchmark = struct {
         if (len > 1) {
             lastIndex = len - 1;
         }
-        quicksort.sort(self.durations.items, 0, lastIndex - 1);
+        quicksort.sort(u64, self.durations.items, 0, lastIndex - 1);
 
         const p75Index: usize = len * 75 / 100;
         const p99Index: usize = len * 99 / 100;
