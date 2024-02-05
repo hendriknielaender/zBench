@@ -7,6 +7,7 @@ const log = std.log.scoped(.zbench);
 
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
+const quicksort = @import("./util/quicksort.zig");
 
 /// Configuration for benchmarking.
 /// This struct holds settings to control the behavior of benchmark executions.
@@ -118,28 +119,6 @@ pub const Benchmark = struct {
         self.total_operations = ops;
     }
 
-    pub fn quickSort(items: []u64, initialStart: usize, end: usize) void {
-        if (initialStart < end) {
-            const pivotIndex = partition(items, initialStart, end);
-            quickSort(items, initialStart, pivotIndex);
-            quickSort(items, pivotIndex + 1, end);
-        }
-    }
-
-    fn partition(items: []u64, partitionStart: usize, end: usize) usize {
-        const pivot = items[end - 1];
-        var i = partitionStart;
-
-        for (partitionStart..end - 1) |index| {
-            if (items[index] < pivot) {
-                std.mem.swap(u64, &items[i], &items[index]);
-                i += 1;
-            }
-        }
-        std.mem.swap(u64, &items[i], &items[end - 1]);
-        return i;
-    }
-
     /// Calculate the 75th, 99th and 99.5th percentiles of the durations. They represent the timings below
     /// which 75%, 99% and 99.5% of the other measurments would lie (respectively) when timings are
     /// sorted in increasing order.
@@ -155,7 +134,7 @@ pub const Benchmark = struct {
         if (len > 1) {
             lastIndex = len - 1;
         }
-        quickSort(self.durations.items, 0, lastIndex - 1);
+        quicksort.sort(self.durations.items, 0, lastIndex - 1);
 
         const p75Index: usize = len * 75 / 100;
         const p99Index: usize = len * 99 / 100;
