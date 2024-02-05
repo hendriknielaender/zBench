@@ -7,6 +7,7 @@ const log = std.log.scoped(.zbench);
 
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
+const quicksort = @import("./util/quicksort.zig");
 
 /// Configuration for benchmarking.
 /// This struct holds settings to control the behavior of benchmark executions.
@@ -118,45 +119,22 @@ pub const Benchmark = struct {
         self.total_operations = ops;
     }
 
-    pub fn quickSort(items: []u64, low: usize, high: usize) void {
-        if (low < high) {
-            const pivotIndex = partition(items, low, high);
-            if (pivotIndex != 0) {
-                quickSort(items, low, pivotIndex - 1);
-            }
-            quickSort(items, pivotIndex + 1, high);
-        }
-    }
-
-    fn partition(items: []u64, low: usize, high: usize) usize {
-        const pivot = items[high];
-        var i = low;
-
-        var j = low;
-        while (j <= high) : (j += 1) {
-            if (items[j] < pivot) {
-                std.mem.swap(u64, &items[i], &items[j]);
-                i += 1;
-            }
-        }
-        std.mem.swap(u64, &items[i], &items[high]);
-        return i;
-    }
-
     /// Calculate the 75th, 99th and 99.5th percentiles of the durations. They represent the timings below
     /// which 75%, 99% and 99.5% of the other measurments would lie (respectively) when timings are
     /// sorted in increasing order.
     pub fn calculatePercentiles(self: Benchmark) Percentiles {
+        if (self.durations.items.len < 2) {
+            std.log.warn("Insufficient data for percentile calculation.", .{});
+            return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
+        }
+
         // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
         var lastIndex: usize = 0;
         if (len > 1) {
             lastIndex = len - 1;
-        } else {
-            log.debug("Cannot calculate percentiles: recorded less than two durations", .{});
-            return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
-        quickSort(self.durations.items, 0, lastIndex - 1);
+        quicksort.sort(u64, self.durations.items, 0, lastIndex - 1);
 
         const p75Index: usize = len * 75 / 100;
         const p99Index: usize = len * 99 / 100;
@@ -167,53 +145,6 @@ pub const Benchmark = struct {
         const p995 = self.durations.items[p995Index];
 
         return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
-    }
-
-    /// Prints a report of total operations and timing statistics.
-    /// (Similar to BenchmarkResult.prettyPrint)
-    pub fn report(self: Benchmark) !void {
-        const percentiles = self.calculatePercentiles();
-
-        var total_time_buffer: [128]u8 = undefined;
-        const total_time_str = try format.duration(total_time_buffer[0..], self.elapsed());
-
-        var p75_buffer: [128]u8 = undefined;
-        const p75_str = try format.duration(p75_buffer[0..], percentiles.p75);
-
-        var p99_buffer: [128]u8 = undefined;
-        const p99_str = try format.duration(p99_buffer[0..], percentiles.p99);
-
-        var p995_buffer: [128]u8 = undefined;
-        const p995_str = try format.duration(p995_buffer[0..], percentiles.p995);
-
-        var avg_std_buffer: [128]u8 = undefined;
-        var avg_std_offset = (try format.duration(avg_std_buffer[0..], self.calculateAverage())).len;
-        avg_std_offset += (try std.fmt.bufPrint(avg_std_buffer[avg_std_offset..], " ± ", .{})).len;
-        avg_std_offset += (try format.duration(avg_std_buffer[avg_std_offset..], self.calculateStd())).len;
-        const avg_std_str = avg_std_buffer[0..avg_std_offset];
-
-        var min_buffer: [128]u8 = undefined;
-        const min_str = try format.duration(min_buffer[0..], self.min_duration);
-
-        var max_buffer: [128]u8 = undefined;
-        const max_str = try format.duration(max_buffer[0..], self.max_duration);
-
-        var min_max_buffer: [128]u8 = undefined;
-        const min_max_str = try std.fmt.bufPrint(min_max_buffer[0..], "({s} ... {s})", .{ min_str, max_str });
-
-        const stdout = std.io.getStdOut().writer();
-        format.prettyPrintHeader();
-        try stdout.print("---------------------------------------------------------------------------------------------------------------\n", .{});
-        try stdout.print(
-            "{s:<22} \x1b[90m{d:<8} \x1b[90m{s:<10} \x1b[33m{s:<22} \x1b[95m{s:<28} \x1b[90m{s:<10} {s:<10} {s:<10}\x1b[0m\n\n",
-            .{ self.name, self.total_operations, total_time_str, avg_std_str, min_max_str, p75_str, p99_str, p995_str },
-        );
-        try stdout.print("\n", .{});
-
-        if (self.config.display_system_info) {
-            // TODO: display system informations like cpu, zig version etc.
-            log.info("[NOT IMPLEMENTED] System Information: ...", .{});
-        }
     }
 
     /// Calculate the average (more precisely arithmetic mean) of the durations
