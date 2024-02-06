@@ -1,7 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+const unix = @import("os/linux.zig");
 const mac = @import("os/osx.zig");
+const win = @import("os/windows.zig");
 
 pub const OsInfo = struct {
     platform: []const u8,
@@ -25,7 +27,7 @@ pub fn getSystemInfo(allocator: std.mem.Allocator) !OsInfo {
 pub fn linux(allocator: std.mem.Allocator) !OsInfo {
     return OsInfo{
         .platform = platform,
-        .cpu = try linux.getCpuName(allocator),
+        .cpu = try unix.getCpuName(allocator),
         .cpu_cores = 1,
         .memory_total = 1,
     };
@@ -45,7 +47,7 @@ pub fn windows(allocator: std.mem.Allocator) !OsInfo {
     // GetSystemInfo, GlobalMemoryStatusEx, or similar for CPU cores and total memory
     return OsInfo{
         .platform = platform,
-        .cpu = try windows.getCpuName(allocator),
+        .cpu = try win.getCpuName(allocator),
         .cpu_cores = 1, // Retrieve CPU cores using GetSystemInfo or similar,
         .memory_total = 1, // Retrieve total memory using GlobalMemoryStatusEx or similar,
     };
