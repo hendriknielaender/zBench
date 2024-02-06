@@ -19,7 +19,7 @@ fn myBenchmark(_: *zbench.Benchmark) void {
 
 test "bench test basic" {
     const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator, .{ .iterations = 10 });
+    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator, .{ .iterations = 10, .display_system_info = true });
     var benchmarkResults = zbench.BenchmarkResults{
         .results = resultsAlloc,
     };

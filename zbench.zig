@@ -3,11 +3,13 @@
 //!zig-autodoc-guide: docs/advanced.md
 
 const std = @import("std");
+const builtin = @import("builtin");
 const log = std.log.scoped(.zbench);
 
 const c = @import("./util/color.zig");
 const format = @import("./util/format.zig");
 const quicksort = @import("./util/quicksort.zig");
+const platform = @import("./util/platform.zig");
 
 /// Configuration for benchmarking.
 /// This struct holds settings to control the behavior of benchmark executions.
@@ -295,6 +297,14 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     const MIN_DURATION = bench.config.time_budget; // minimum benchmark time in nanoseconds (1 second)
     const MAX_N = 65536; // maximum number of executions for the final benchmark run
     const MAX_ITERATIONS = bench.config.max_iterations; // Define a maximum number of iterations
+
+    if (bench.config.display_system_info) {
+        const allocator = std.heap.page_allocator;
+        const info = try platform.getSystemInfo(allocator);
+
+        std.debug.print("\n Operating System: {s}", .{info.platform});
+        std.debug.print("\n CPU: {s}", .{info.cpu});
+    }
 
     if (bench.config.iterations != 0) {
         // If user-defined iterations are specified, use them directly
