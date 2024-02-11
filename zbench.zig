@@ -304,6 +304,8 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
 
         std.debug.print("\n Operating System: {s}", .{info.platform});
         std.debug.print("\n CPU: {s}", .{info.cpu});
+        std.debug.print("\n CPU Cores: {d}", .{info.cpu_cores});
+        std.debug.print("\n Memory: {s}", .{info.memory_total});
     }
 
     if (bench.config.iterations != 0) {
