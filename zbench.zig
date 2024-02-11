@@ -302,10 +302,14 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         const allocator = std.heap.page_allocator;
         const info = try platform.getSystemInfo(allocator);
 
-        std.debug.print("\n Operating System: {s}", .{info.platform});
-        std.debug.print("\n CPU: {s}", .{info.cpu});
-        std.debug.print("\n CPU Cores: {d}", .{info.cpu_cores});
-        std.debug.print("\n Memory: {s}", .{info.memory_total});
+        std.debug.print(
+            \\
+            \\  Operating System: {s}
+            \\  CPU:             {s}
+            \\  CPU Cores:       {d}
+            \\  Total Memory:    {s}
+            \\
+        , .{ info.platform, info.cpu, info.cpu_cores, info.memory_total });
     }
 
     if (bench.config.iterations != 0) {
