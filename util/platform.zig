@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 
 const format = @import("format.zig");
 
-const unix = @import("os/linux.zig");
+const lnx = @import("os/linux.zig");
 const mac = @import("os/osx.zig");
 const win = @import("os/windows.zig");
 
@@ -27,12 +27,12 @@ pub fn getSystemInfo(allocator: std.mem.Allocator) !OsInfo {
 }
 
 pub fn linux(allocator: std.mem.Allocator) !OsInfo {
-    const memory = try mac.getTotalMemory(allocator);
+    const memory = try lnx.getTotalMemory(allocator);
 
     return OsInfo{
         .platform = platform,
-        .cpu = try unix.getCpuName(allocator),
-        .cpu_cores = try unix.getCpuCores(allocator),
+        .cpu = try lnx.getCpuName(allocator),
+        .cpu_cores = try lnx.getCpuCores(allocator),
         .memory_total = try format.memorySize(memory, allocator),
     };
 }
