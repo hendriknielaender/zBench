@@ -305,9 +305,9 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         std.debug.print(
             \\
             \\  Operating System: {s}
-            \\  CPU:             {s}
-            \\  CPU Cores:       {d}
-            \\  Total Memory:    {s}
+            \\  CPU:              {s}
+            \\  CPU Cores:        {d}
+            \\  Total Memory:     {s}
             \\
         , .{ info.platform, info.cpu, info.cpu_cores, info.memory_total });
     }
