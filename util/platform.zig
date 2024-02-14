@@ -27,12 +27,12 @@ pub fn getSystemInfo(allocator: std.mem.Allocator) !OsInfo {
 }
 
 pub fn linux(allocator: std.mem.Allocator) !OsInfo {
-    const memory = try lnx.getTotalMemory(allocator);
+    const memory = try lnx.getTotalMemory();
 
     return OsInfo{
         .platform = platform,
         .cpu = try lnx.getCpuName(allocator),
-        .cpu_cores = try lnx.getCpuCores(allocator),
+        .cpu_cores = try lnx.getCpuCores(),
         .memory_total = try format.memorySize(memory, allocator),
     };
 }
