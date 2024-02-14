@@ -6,49 +6,44 @@ const log = std.log.scoped(.zbench_platform_linux);
 pub fn getCpuName(allocator: mem.Allocator) ![]const u8 {
     const file = try fs.cwd().openFile("/proc/cpuinfo", .{});
     defer file.close();
-    var buf = try allocator.alloc(u8, 128); // TODO : [FO] I think we could use a fixed sized buffer here as well
-    _ = try file.read(buf);
-    const start = if (mem.indexOf(u8, buf, "model name")) |pos| pos + 13 else unreachable;
-    const end = if (mem.indexOfScalar(u8, buf[start..], '\n')) |pos| start + pos else unreachable;
-    return buf[start..end];
+
+    var buf: [128]u8 = undefined;
+    _ = try file.read(&buf);
+
+    const start = if (mem.indexOf(u8, &buf, "model name")) |pos| pos + 13 else 0;
+    const end = if (mem.indexOfScalar(u8, buf[start..], '\n')) |pos| start + pos else 0;
+
+    if ((start == 0 and end == 0) or (start > end)) {
+        return error.CouldNotFindCpuName;
+    }
+
+    return allocator.dupe(u8, buf[start..end]);
 }
 
-pub fn getCpuCores(allocator: mem.Allocator) !u32 {
-    _ = allocator; // TODO : [FO] a fixed buffer should do here
+pub fn getCpuCores() !u32 {
     const file = try fs.cwd().openFile("/proc/cpuinfo", .{});
     defer file.close();
 
-    var buf_reader = std.io.bufferedReader(file.reader());
-    var stream = buf_reader.reader();
-    var buf: [128]u8 = undefined; // we do not need info from long lines
+    var buf: [1024]u8 = undefined;
+    _ = try file.read(&buf);
 
-    // Count occurrences of "processor" to determine the number of cores
-    var count: u32 = 0;
-    while (true) {
-        const line = stream.readUntilDelimiterOrEof(&buf, '\n') catch { // |err| {
-            //            log.warn("read line error: {any}", .{err});
-            // line might be too long; ignore
-            continue;
-        };
-        if (line == null) break; // we reached EOF
-        const pos = mem.indexOf(u8, line.?, "processor");
-        if (pos != null) {
-            count += 1;
-            //           log.warn("found processor, count: {d}", .{count});
+    var token_iterator = std.mem.tokenizeSequence(u8, &buf, "\n");
+    while (token_iterator.next()) |line| {
+        if (std.mem.startsWith(u8, line, "cpu cores")) {
+            const start = if (mem.indexOf(u8, line, ":")) |pos| pos + 2 else 0;
+            return try std.fmt.parseInt(u32, line[start..], 10);
         }
     }
 
-    return count;
+    return error.CouldNotFindNumCores;
 }
 
-pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
-    _ = allocator; // TODO : [FO] a fixed buffer should do here
+pub fn getTotalMemory() !u64 {
     const file = try std.fs.cwd().openFile("/proc/meminfo", .{});
     defer file.close();
 
     var buf: [128]u8 = undefined;
-    _ = try file.read(&buf); // anything above 128 bytes will be discarded
-    // log.warn("bytes Read: {d}", .{bytesRead});
+    _ = try file.read(&buf);
 
     var token_iterator = std.mem.tokenizeSequence(u8, &buf, "\n");
     while (token_iterator.next()) |line| {
