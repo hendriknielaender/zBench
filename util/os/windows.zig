@@ -1,13 +1,14 @@
 const std = @import("std");
+const log = std.log.scoped(.zbench_platform_windows);
 
 pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
     const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "name" });
-    return stdout[41 .. stdout.len - 7];
+    return stdout[45 .. stdout.len - 7];
 }
 
 pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
     // Use `NumberOfLogicalProcessors` to get the logical cores count
-    const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "NumberOfLogicalProcessors" });
+    const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "NumberOfCores" });
 
     // Process the command output to extract the cores count
     // WMIC output has headers and multiple lines, we need to find the first digit occurrence
@@ -31,7 +32,7 @@ pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
     defer allocator.free(output);
 
     // Tokenize the output to find the numeric value
-    var lines = std.mem.tokenize(output, "\r\n");
+    var lines = std.mem.tokenize(u8, output, "\r\n");
     _ = lines.next(); // Skip the first line, which is the header
 
     // The second line contains the memory size in bytes
@@ -48,6 +49,6 @@ pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
 }
 
 fn exec(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
-    const stdout = (try std.process.Child.exec(.{ .allocator = allocator, .argv = args })).stdout;
+    const stdout = (try std.ChildProcess.exec(.{ .allocator = allocator, .argv = args })).stdout;
     return stdout[0 .. stdout.len - 1];
 }
