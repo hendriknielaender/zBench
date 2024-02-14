@@ -49,7 +49,7 @@ pub fn macos(allocator: std.mem.Allocator) !OsInfo {
 }
 
 pub fn windows(allocator: std.mem.Allocator) !OsInfo {
-    const memory = try mac.getTotalMemory(allocator);
+    const memory = try win.getTotalMemory(allocator);
 
     return OsInfo{
         .platform = platform,
