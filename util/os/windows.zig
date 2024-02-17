@@ -7,7 +7,6 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
 }
 
 pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
-    // Use `NumberOfLogicalProcessors` to get the logical cores count
     const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "NumberOfCores" });
 
     // Process the command output to extract the cores count
@@ -21,7 +20,7 @@ pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
 
     // Parse the extracted string to an integer
     return std.fmt.parseInt(u32, stdout[start..end], 10) catch |err| {
-        std.debug.print("Error parsing CPU cores count: {}\n", .{err});
+        log.err("Error parsing CPU cores count: {}\n", .{err});
         return err;
     };
 }
@@ -40,7 +39,7 @@ pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
         // Trim spaces and parse the memory size
         const memSizeStr = std.mem.trim(u8, line, " \r\n\t");
         return std.fmt.parseInt(u64, memSizeStr, 10) catch |err| {
-            std.debug.print("Error parsing total memory size: {}\n", .{err});
+            log.err("Error parsing total memory size: {}\n", .{err});
             return err;
         };
     }

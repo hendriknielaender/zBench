@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.zbench_platform_osx);
 
 pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
     return try exec(allocator, &.{ "sysctl", "-n", "machdep.cpu.brand_string" });
@@ -9,7 +10,7 @@ pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
     defer allocator.free(coresString);
 
     return std.fmt.parseInt(u32, coresString, 10) catch |err| {
-        std.debug.print("Error parsing CPU cores count: {}\n", .{err});
+        log.err("Error parsing CPU cores count: {}\n", .{err});
         return err;
     };
 }
@@ -20,7 +21,7 @@ pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
 
     // Parse the string to a 64-bit unsigned integer
     return std.fmt.parseInt(u64, memSizeString, 10) catch |err| {
-        std.debug.print("Error parsing total memory size: {}\n", .{err});
+        log.err("Error parsing total memory size: {}\n", .{err});
         return err;
     };
 }
