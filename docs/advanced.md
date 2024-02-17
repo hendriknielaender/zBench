@@ -12,3 +12,4 @@ If you encounter issues with character encoding, such as misrepresentation of "p
 
 This setting will configure your system to use UTF-8 encoding for non-Unicode programs, which should resolve any character display issues in the benchmark output.
 
+[Zig console output encoding issue](https://github.com/ziglang/zig/issues/7600#issuecomment-753563786)
