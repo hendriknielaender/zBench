@@ -165,7 +165,8 @@ zig build test_examples
 ```
 
 ### Troubleshooting
-If Zig doesn't detect changes in a dependency, clear the project's `zig-cache` folder and `~/.cache/zig`.
+- If Zig doesn't detect changes in a dependency, clear the project's `zig-cache` folder and `~/.cache/zig`.
+- [Non-ASCII characters not printed correctly on Windows](docs/advanced.md)
 
 ## Contributing
 
