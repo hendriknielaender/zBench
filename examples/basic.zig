@@ -21,7 +21,7 @@ test "bench test basic" {
     const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
     var benchmarkResults = zbench.BenchmarkResults.init(resultsAlloc);
     defer benchmarkResults.deinit();
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator, .{ .iterations = 10 });
+    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator, .{ .iterations = 10, .display_system_info = true });
 
     try zbench.run(myBenchmark, &bench, &benchmarkResults);
     try benchmarkResults.prettyPrint();

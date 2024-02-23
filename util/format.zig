@@ -1,5 +1,6 @@
 const std = @import("std");
 const Color = @import("./color.zig").Color;
+const log = std.log.scoped(.zbench_format);
 
 pub fn duration(buffer: []u8, d: u64) ![]u8 {
     const units = [_][]const u8{ "ns", "µs", "ms", "s" };
@@ -18,6 +19,32 @@ pub fn duration(buffer: []u8, d: u64) ![]u8 {
     const formatted = try std.fmt.bufPrint(buffer, "{d}.{d}{s}", .{ scaledDuration, fractionalPart, units[unitIndex] });
 
     return formatted;
+}
+
+pub fn memorySize(bytes: u64, allocator: std.mem.Allocator) ![]const u8 {
+    const units = .{ "B", "KB", "MB", "GB", "TB" };
+    var size: f64 = @floatFromInt(bytes);
+    var unit_index: usize = 0;
+
+    while (size >= 1024 and unit_index < units.len - 1) : (unit_index += 1) {
+        size /= 1024;
+    }
+
+    const unit = switch (unit_index) {
+        0 => "B",
+        1 => "KB",
+        2 => "MB",
+        3 => "GB",
+        4 => "TB",
+        5 => "PB",
+        6 => "EB",
+        else => unreachable,
+    };
+
+    // Format the result with two decimal places if needed
+    var buf: [64]u8 = undefined; // Buffer for formatting
+    const formattedSize = try std.fmt.bufPrint(&buf, "{d:.2} {s}", .{ size, unit });
+    return allocator.dupe(u8, formattedSize);
 }
 
 /// Pretty-prints the header for the result pretty-print table
