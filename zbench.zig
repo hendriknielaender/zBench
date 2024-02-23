@@ -246,11 +246,26 @@ pub fn prettyPrintHeader(writer: anytype) !void {
 /// It provides functionality to format and print these results.
 pub const BenchmarkResults = struct {
     const Color = c.Color;
+    const BufferedStdoutWriter = std.io.BufferedWriter(1024, @TypeOf(std.io.getStdOut().writer()));
 
     /// A dynamic list of BenchmarkResult objects.
     results: std.ArrayList(BenchmarkResult),
     /// A handle to a buffered stdout-writer. Used for printing-operations
-    out_stream: std.io.BufferedWriter(1024, @TypeOf(std.io.getStdOut().writer())) = .{ .unbuffered_writer = std.io.getStdOut().writer() },
+    out_stream: BufferedStdoutWriter,
+
+    // NOTE: This init function is technically not needed however it was added to circumvent a (most likely) bug
+    // in the 0.11.0 compiler (see issue #49). In the future we may want to remove this.
+    pub fn init(results: std.ArrayList(BenchmarkResult)) BenchmarkResults {
+        return BenchmarkResults{
+            .results = results,
+            .out_stream = .{ .unbuffered_writer = std.io.getStdOut().writer() },
+        };
+    }
+
+    pub fn deinit(self: *BenchmarkResults) void {
+        // self.out_stream.flush();
+        self.results.deinit();
+    }
 
     /// Determines the color representation based on the total-time of the benchmark.
     /// total_time: The total-time to evaluate.
