@@ -2,13 +2,14 @@ const std = @import("std");
 
 // TODO : do we need a mutex here ?
 
-pub fn prettyPrint(indent: usize, text: []const u8) !void {
+pub fn prettyPrint(comptime indent: usize, text: []const u8) !void {
     const stdout = std.io.getStdOut().writer();
-    var lines = text.splitLines();
+    var lines = std.mem.splitSequence(u8, text, "\n");
     while (lines.next()) |line| {
         // Indent the line by the specified amount.
-        var spaces: [indent]u8 = undefined;
-        for (spaces) |*space| space.* = ' ';
-        try stdout.print("{}{}\n", .{ std.mem.sliceTo(&spaces, indent), line });
+        try stdout.print(
+            "{s}{s}\n",
+            .{ std.mem.sliceTo(&[_]u8{' '} ** indent, indent), line },
+        );
     }
 }

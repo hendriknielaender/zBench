@@ -13,11 +13,10 @@ pub fn getCpuName(allocator: mem.Allocator) ![]const u8 {
     const start = if (mem.indexOf(u8, &buf, "model name")) |pos| pos + 13 else 0;
     const end = if (mem.indexOfScalar(u8, buf[start..], '\n')) |pos| start + pos else 0;
 
-    if ((start == 0 and end == 0) or (start > end)) {
-        return error.CouldNotFindCpuName;
-    }
-
-    return allocator.dupe(u8, buf[start..end]);
+    return if ((start == 0 and end == 0) or (start > end))
+        error.CouldNotFindCpuName
+    else
+        allocator.dupe(u8, buf[start..end]);
 }
 
 pub fn getCpuCores() !u32 {

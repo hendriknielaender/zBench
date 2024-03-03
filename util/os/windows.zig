@@ -5,9 +5,10 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
     const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "name" });
 
     // Ensure stdout is long enough before slicing
-    if (stdout.len < 52) return error.InsufficientLength;
-
-    return stdout[45 .. stdout.len - 7];
+    return if (stdout.len < 52)
+        error.InsufficientLength
+    else
+        stdout[45 .. stdout.len - 7];
 }
 
 pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
@@ -54,7 +55,5 @@ pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
 fn exec(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
     const stdout = (try std.ChildProcess.exec(.{ .allocator = allocator, .argv = args })).stdout;
 
-    if (stdout.len == 0) return error.EmptyOutput;
-
-    return stdout[0 .. stdout.len - 1];
+    return if (stdout.len == 0) error.EmptyOutput else stdout[0 .. stdout.len - 1];
 }

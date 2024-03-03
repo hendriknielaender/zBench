@@ -28,8 +28,5 @@ pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
 
 fn exec(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
     const stdout = (try std.process.Child.exec(.{ .allocator = allocator, .argv = args })).stdout;
-
-    if (stdout.len == 0) return error.EmptyOutput;
-
-    return stdout[0 .. stdout.len - 1];
+    return if (stdout.len == 0) error.EmptyOutput else stdout[0 .. stdout.len - 1];
 }

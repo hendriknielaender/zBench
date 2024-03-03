@@ -34,7 +34,7 @@ fn partition(comptime T: type, array: []T, low: usize, high: usize) usize {
 }
 
 test "empty array" {
-    var array: []u64 = &.{};
+    const array: []u64 = &.{};
     sort(u64, array, 0, 0);
     const a = array.len;
     try expect(a == 0);

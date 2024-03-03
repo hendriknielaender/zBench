@@ -27,34 +27,28 @@ pub fn getSystemInfo(allocator: std.mem.Allocator) !OsInfo {
 }
 
 pub fn linux(allocator: std.mem.Allocator) !OsInfo {
-    const memory = try lnx.getTotalMemory();
-
-    return OsInfo{
+    return .{
         .platform = platform,
         .cpu = try lnx.getCpuName(allocator),
         .cpu_cores = try lnx.getCpuCores(),
-        .memory_total = try format.memorySize(memory, allocator),
+        .memory_total = try format.memorySize(try lnx.getTotalMemory(), allocator),
     };
 }
 
 pub fn macos(allocator: std.mem.Allocator) !OsInfo {
-    const memory = try mac.getTotalMemory(allocator);
-
-    return OsInfo{
+    return .{
         .platform = platform,
         .cpu = try mac.getCpuName(allocator),
         .cpu_cores = try mac.getCpuCores(allocator),
-        .memory_total = try format.memorySize(memory, allocator),
+        .memory_total = try format.memorySize(try mac.getTotalMemory(allocator), allocator),
     };
 }
 
 pub fn windows(allocator: std.mem.Allocator) !OsInfo {
-    const memory = try win.getTotalMemory(allocator);
-
-    return OsInfo{
+    return .{
         .platform = platform,
         .cpu = try win.getCpuName(allocator),
         .cpu_cores = try win.getCpuCores(allocator),
-        .memory_total = try format.memorySize(memory, allocator),
+        .memory_total = try format.memorySize(try win.getTotalMemory(allocator), allocator),
     };
 }

@@ -16,9 +16,7 @@ pub fn duration(buffer: []u8, d: u64) ![]u8 {
         unitIndex += 1;
     }
 
-    const formatted = try std.fmt.bufPrint(buffer, "{d}.{d}{s}", .{ scaledDuration, fractionalPart, units[unitIndex] });
-
-    return formatted;
+    return try std.fmt.bufPrint(buffer, "{d}.{d}{s}", .{ scaledDuration, fractionalPart, units[unitIndex] });
 }
 
 pub fn memorySize(bytes: u64, allocator: std.mem.Allocator) ![]const u8 {
@@ -73,9 +71,11 @@ pub fn prettyPrintTotalOperations(total_operations: u64, writer: anytype, color:
 /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
 pub fn prettyPrintTotalTime(total_time: u64, writer: anytype, color: Color) !void {
     var buffer: [128]u8 = undefined;
-    const str = try duration(buffer[0..], total_time);
 
-    try writer.print("{s}{s:<14}{s} ", .{ color.code(), str, Color.reset.code() });
+    try writer.print(
+        "{s}{s:<14}{s} ",
+        .{ color.code(), try duration(buffer[0..], total_time), Color.reset.code() },
+    );
 }
 
 /// Pretty-prints the average (arithmetic mean) and the standard deviation of the durations
@@ -85,9 +85,11 @@ pub fn prettyPrintAvgStd(avg: u64, stdd: u64, writer: anytype, color: Color) !vo
     var avg_stdd_offset = (try duration(buffer[0..], avg)).len;
     avg_stdd_offset += (try std.fmt.bufPrint(buffer[avg_stdd_offset..], " ± ", .{})).len;
     avg_stdd_offset += (try duration(buffer[avg_stdd_offset..], stdd)).len;
-    const str = buffer[0..avg_stdd_offset];
 
-    try writer.print("{s}{s:<22}{s} ", .{ color.code(), str, Color.reset.code() });
+    try writer.print(
+        "{s}{s:<22}{s} ",
+        .{ color.code(), buffer[0..avg_stdd_offset], Color.reset.code() },
+    );
 }
 
 /// Pretty-prints the minumim and maximum duration
