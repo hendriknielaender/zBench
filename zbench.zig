@@ -11,6 +11,15 @@ const format = @import("./util/format.zig");
 const quicksort = @import("./util/quicksort.zig");
 const platform = @import("./util/platform.zig");
 
+/// LifecycleHooks containing optional hooks for lifecycle events in benchmarking.
+/// Each field in this struct is a nullable function pointer.
+const LifecycleHooks = struct {
+    beforeAll: ?*const fn () void = null,
+    afterAll: ?*const fn () void = null,
+    beforeEach: ?*const fn () void = null,
+    afterEach: ?*const fn () void = null,
+};
+
 /// Configuration for benchmarking.
 /// This struct holds settings to control the behavior of benchmark executions.
 pub const Config = struct {
@@ -26,6 +35,16 @@ pub const Config = struct {
     /// This value is used to determine how long a single benchmark should be allowed to run
     /// before concluding. Helps in avoiding long-running benchmarks.
     time_budget: u64 = 2e9, // 2 seconds
+
+    /// Configuration for lifecycle hooks in benchmarking.
+    /// Provides the ability to define custom actions at different stages of the benchmark process:
+    /// - `beforeAll`: A hook that runs once before all benchmarks begin.
+    /// - `afterAll`: A hook that runs once after all benchmarks have completed.
+    /// - `beforeEach`: A hook that runs before each individual benchmark.
+    /// - `afterEach`: A hook that runs after each individual benchmark.
+    /// This allows for custom setup and teardown operations, as well as fine-grained control
+    /// over the environment in which benchmarks are run.
+    hooks: LifecycleHooks = .{},
 
     /// Flag to indicate whether system information should be displayed. Default is false.
     /// If true, detailed system information (e.g., CPU, memory) will be displayed
@@ -317,6 +336,18 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
         , .{ info.platform, info.cpu, info.cpu_cores, info.memory_total });
     }
 
+    // Call beforeAll hook if defined
+    if (bench.config.hooks.beforeAll) |hook| {
+        hook();
+    }
+
+    defer {
+        // Call afterAll hook if defined
+        if (bench.config.hooks.afterAll) |hook| {
+            hook();
+        }
+    }
+
     if (bench.config.iterations != 0) {
         // If user-defined iterations are specified, use them directly
         bench.N = bench.config.iterations;
@@ -361,9 +392,19 @@ pub fn run(comptime func: BenchFunc, bench: *Benchmark, benchResult: *BenchmarkR
     bench.reset();
     var j: usize = 0;
     while (j < bench.N) : (j += 1) {
+        // Call beforeEach hook if defined
+        if (bench.config.hooks.beforeEach) |hook| {
+            hook();
+        }
+
         bench.start();
         func(bench);
         bench.stop();
+
+        // Call afterEach hook if defined
+        if (bench.config.hooks.afterEach) |hook| {
+            hook();
+        }
     }
 
     bench.setTotalOperations(bench.N);
