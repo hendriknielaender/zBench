@@ -120,6 +120,7 @@ pub const Config = struct {
     iterations: u16 = 0,
     max_iterations: u16 = 16384,
     time_budget: u64 = 2e9, // 2 seconds
+    hooks: LifecycleHooks = .{},
     display_system_info: bool = false,
 };
 ```
@@ -127,6 +128,7 @@ pub const Config = struct {
 - `iterations`: The number of iterations the benchmark has been run. This field is usually managed by zBench itself.
 - `max_iterations`: Set the maximum number of iterations for a benchmark. Useful for controlling long-running benchmarks.
 - `time_budget`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
+- `hooks`: Set `beforeAll`, `afterAll`, `beforeEach`, and `afterEach` hooks.
 - `display_system_info`: Enable or disable displaying system information alongside the benchmark results.
 
 ### Compatibility Notes
