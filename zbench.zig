@@ -144,44 +144,31 @@ pub const Benchmark = struct {
     /// which 75%, 99% and 99.5% of the other measurments would lie (respectively) when timings are
     /// sorted in increasing order.
     pub fn calculatePercentiles(self: Benchmark) Percentiles {
-        if (self.durations.items.len < 2) {
+        // quickSort might fail with an empty input slice, so safety checks first
+        if (self.durations.items.len <= 1) {
             std.log.warn("Insufficient data for percentile calculation.", .{});
             return Percentiles{ .p75 = 0, .p99 = 0, .p995 = 0 };
         }
 
-        // quickSort might fail with an empty input slice, so safety checks first
         const len = self.durations.items.len;
-        var lastIndex: usize = 0;
-        if (len > 1) {
-            lastIndex = len - 1;
-        }
-        quicksort.sort(u64, self.durations.items, 0, lastIndex - 1);
+        quicksort.sort(u64, self.durations.items, 0, len - 1);
 
-        const p75Index: usize = len * 75 / 100;
-        const p99Index: usize = len * 99 / 100;
-        const p995Index: usize = len * 995 / 1000;
+        const p75 = self.durations.items[len * 75 / 100];
+        const p99 = self.durations.items[len * 99 / 100];
+        const p995 = self.durations.items[len * 995 / 1000];
 
-        const p75 = self.durations.items[p75Index];
-        const p99 = self.durations.items[p99Index];
-        const p995 = self.durations.items[p995Index];
-
+        std.debug.assert(p75 <= p99);
+        std.debug.assert(p99 <= p995);
         return Percentiles{ .p75 = p75, .p99 = p99, .p995 = p995 };
     }
 
     /// Calculate the average (more precisely arithmetic mean) of the durations
     pub fn calculateAverage(self: Benchmark) u64 {
-        // prevent division by zero
-        const len = self.durations.items.len;
-        if (len == 0) return 0;
+        if (self.durations.items.len == 0) return 0;
 
         var sum: u64 = 0;
-        for (self.durations.items) |duration| {
-            sum += duration;
-        }
-
-        const avg = sum / len;
-
-        return avg;
+        for (self.durations.items) |d| sum += d;
+        return sum / self.durations.items.len;
     }
 
     /// Calculate the standard deviation of the durations. An estimate for the average *deviation*
@@ -189,18 +176,13 @@ pub const Benchmark = struct {
     pub fn calculateStd(self: Benchmark) u64 {
         if (self.durations.items.len <= 1) return 0;
 
+        // We are using the non-biased estimator for the variance; sum(Xi - μ)^2 / (n - 1)
         const avg = self.calculateAverage();
         var nvar: u64 = 0;
         for (self.durations.items) |dur| {
-            // NOTE: With realistic real-life samples this will never overflow,
-            // however a solution without bitcasts would still be cleaner
-            const d: i64 = @bitCast(dur);
-            const a: i64 = @bitCast(avg);
-
-            nvar += @bitCast((d - a) * (d - a));
+            const sd = if (dur < avg) avg - dur else dur - avg;
+            nvar += sd * sd;
         }
-
-        // We are using the non-biased estimator for the variance; sum(Xi - μ)^2 / (n - 1)
         return std.math.sqrt(nvar / (self.durations.items.len - 1));
     }
 };
