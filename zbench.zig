@@ -219,17 +219,25 @@ pub const BenchmarkResult = struct {
     /// Formats and prints the benchmark-result in a readable format.
     /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
     /// header: Whether to pretty-print the header or not
-    pub fn prettyPrint(self: Self, writer: anytype, header: bool) !void {
-        if (header) try format.prettyPrintHeader(writer);
+    pub fn prettyPrint(self: Self, writer: anytype) !void {
+        const colors = true;
+        const pc = self.percentiles;
+        try format.prettyPrintName(self.name, writer);
+        try setColor(colors, writer, Color.cyan);
+        try format.prettyPrintTotalOperations(self.total_operations, writer);
+        try format.prettyPrintTotalTime(self.total_time, writer);
+        try setColor(colors, writer, Color.green);
+        try format.prettyPrintAvgStd(self.avg_duration, self.std_duration, writer);
+        try setColor(colors, writer, Color.blue);
+        try format.prettyPrintMinMax(self.min_duration, self.max_duration, writer);
+        try setColor(colors, writer, Color.cyan);
+        try format.prettyPrintPercentiles(pc.p75, pc.p99, pc.p995, writer);
+        try setColor(colors, writer, Color.reset);
+        try writer.writeAll("\n");
+    }
 
-        try format.prettyPrintName(self.name, writer, Color.none);
-        try format.prettyPrintTotalOperations(self.total_operations, writer, Color.cyan);
-        try format.prettyPrintTotalTime(self.total_time, writer, Color.cyan);
-        try format.prettyPrintAvgStd(self.avg_durations, self.std_durations, writer, Color.green);
-        try format.prettyPrintMinMax(self.min_durations, self.max_durations, writer, Color.blue);
-        try format.prettyPrintPercentiles(self.percentiles.p75, self.percentiles.p99, self.percentiles.p995, writer, Color.cyan);
-
-        _ = try writer.write("\n");
+    fn setColor(colors: bool, writer: anytype, color: Color) !void {
+        if (colors) try writer.writeAll(color.code());
     }
 };
 
@@ -258,38 +266,11 @@ pub const BenchmarkResults = struct {
         self.results.deinit();
     }
 
-    /// Determines the color representation based on the total-time of the benchmark.
-    /// total_time: The total-time to evaluate.
-    pub fn getColor(self: *const BenchmarkResults, total_time: u64) Color {
-        const max_total_time = @max(self.results.items[0].total_time, self.results.items[self.results.items.len - 1].total_time);
-        const min_total_time = @min(self.results.items[0].total_time, self.results.items[self.results.items.len - 1].total_time);
-
-        if (total_time <= min_total_time) return Color.green;
-        if (total_time >= max_total_time) return Color.red;
-
-        const prop = (total_time - min_total_time) * 100 / (max_total_time - min_total_time + 1);
-
-        if (prop < 50) return Color.green;
-        if (prop < 75) return Color.yellow;
-
-        return Color.red;
-    }
-
     /// Formats and prints the benchmark results in a readable format.
     pub fn prettyPrint(self: *BenchmarkResults) !void {
-        var writer = self.out_stream.writer();
+        const writer = self.out_stream.writer();
         try format.prettyPrintHeader(writer);
-        for (self.results.items) |result| {
-            try format.prettyPrintName(result.name, writer, Color.none);
-            try format.prettyPrintTotalOperations(result.total_operations, writer, Color.cyan);
-            try format.prettyPrintTotalTime(result.total_time, writer, self.getColor(result.total_time));
-            try format.prettyPrintAvgStd(result.avg_duration, result.std_duration, writer, Color.green);
-            try format.prettyPrintMinMax(result.min_duration, result.max_duration, writer, Color.blue);
-            try format.prettyPrintPercentiles(result.percentiles.p75, result.percentiles.p99, result.percentiles.p995, writer, Color.cyan);
-
-            _ = try writer.write("\n");
-        }
-
+        for (self.results.items) |r| try r.prettyPrint(writer);
         try self.out_stream.flush();
     }
 };

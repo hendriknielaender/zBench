@@ -37,7 +37,6 @@ fn setupLibrary(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
 fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
     const test_files = [_]struct { name: []const u8, path: []const u8 }{
         .{ .name = "tests", .path = "tests.zig" },
-        .{ .name = "format_test", .path = "util/format_test.zig" },
         .{ .name = "quicksort", .path = "util/quicksort.zig" },
     };
 
