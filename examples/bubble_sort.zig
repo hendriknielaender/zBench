@@ -27,7 +27,5 @@ test "bench test bubbleSort" {
 
     try bench.add("Bubble Sort Benchmark", myBenchmark, .{});
 
-    const results = try bench.run();
-    defer results.deinit();
-    try results.prettyPrint(stdout, true);
+    try bench.run(stdout);
 }

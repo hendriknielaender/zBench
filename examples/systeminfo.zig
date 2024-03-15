@@ -9,10 +9,13 @@ fn myBenchmark(_: std.mem.Allocator) void {
     }
 }
 
-test "bench test basic" {
+test "bench test system info" {
     const stdout = std.io.getStdOut().writer();
     var bench = zbench.Benchmark.init(std.testing.allocator, .{});
     defer bench.deinit();
+
+    const sysinfo = try bench.getSystemInfo();
+    try std.fmt.format(stdout, "\n{}\n", .{sysinfo});
 
     try bench.add("My Benchmark", myBenchmark, .{});
     try bench.run(stdout);

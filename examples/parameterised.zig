@@ -11,7 +11,10 @@ const MyBenchmark = struct {
 
     pub fn run(self: MyBenchmark, _: std.mem.Allocator) void {
         var result: usize = 0;
-        for (0..self.loops) |i| result += i * i;
+        for (0..self.loops) |i| {
+            std.mem.doNotOptimizeAway(i);
+            result += i * i;
+        }
     }
 };
 
@@ -23,8 +26,6 @@ test "bench test parameterised" {
     try bench.addParam("My Benchmark 1", &MyBenchmark.init(100_000), .{});
     try bench.addParam("My Benchmark 2", &MyBenchmark.init(200_000), .{});
 
-    const results = try bench.run();
-    defer results.deinit();
     try stdout.writeAll("\n");
-    try results.prettyPrint(stdout, true);
+    try bench.run(stdout);
 }
