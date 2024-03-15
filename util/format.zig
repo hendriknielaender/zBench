@@ -31,7 +31,7 @@ pub fn memorySize(bytes: u64, allocator: std.mem.Allocator) ![]const u8 {
 /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
 pub fn prettyPrintHeader(writer: anytype) !void {
     try writer.print(
-        "\n{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
         .{
             "benchmark",
             "runs",

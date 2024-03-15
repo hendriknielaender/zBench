@@ -36,8 +36,10 @@ fn setupLibrary(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
 
 fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
     const test_files = [_]struct { name: []const u8, path: []const u8 }{
-        .{ .name = "tests", .path = "tests.zig" },
-        .{ .name = "quicksort", .path = "util/quicksort.zig" },
+        .{ .name = "optional", .path = "util/optional.zig" },
+        .{ .name = "platform", .path = "util/platform.zig" },
+        .{ .name = "runner", .path = "util/runner.zig" },
+        .{ .name = "zbench", .path = "zbench.zig" },
     };
 
     const test_step = b.step("test", "Run library tests");
@@ -55,17 +57,27 @@ fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
 
 fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builtin.OptimizeMode) void {
     const example_step = b.step("test_examples", "Build examples");
-    const example_names = [_][]const u8{ "basic", "bubble_sort", "sleep" };
+    const example_names = [_][]const u8{
+        "basic",
+        "bubble_sort",
+        "sleep",
+    };
 
     for (example_names) |example_name| {
         const example = b.addTest(.{
             .name = example_name,
-            .root_source_file = .{ .path = b.fmt("examples/{s}.zig", .{example_name}) },
+            .root_source_file = .{
+                .path = b.fmt("examples/{s}.zig", .{example_name}),
+            },
             .target = target,
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
-        const zbench_mod = b.addModule("zbench", .{ .source_file = .{ .path = "zbench.zig" } });
+        const zbench_mod = b.addModule("zbench", .{
+            .source_file = .{
+                .path = "zbench.zig",
+            },
+        });
         example.addModule("zbench", zbench_mod);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);

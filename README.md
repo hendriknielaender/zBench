@@ -90,24 +90,25 @@ const zbench = @import("zbench");
 ```
 
 ## Usage
-Create a new benchmark function in your Zig code. This function should take a single argument of type *zbench.Benchmark. The function would run the code you wish to benchmark.
+
+Create a new benchmark function in your Zig code. This function should take a single argument of type std.mem.Allocator. The function would run the code you wish to benchmark.
 
 ```zig
-fn benchmarkMyFunction(b: *zbench.Benchmark) void {
+fn benchmarkMyFunction(allocator: std.mem.Allocator) void {
     // Code to benchmark here
 }
 ```
+
 You can then run your benchmarks in a test:
+
 ```zig
 test "bench test" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator, .{ .iterations = 10 });
-    var benchmarkResults = zbench.BenchmarkResults{
-        .results = resultsAlloc,
-    };
-    defer benchmarkResults.results.deinit();
-    try zbench.run(myBenchmark, &bench, &benchmarkResults);
-    try benchmarkResults.prettyPrint();
+    var bench = zbench.Benchmark.init(std.testing.allocator, .{});
+    defer bench.deinit();
+    try bench.add("My Benchmark", myBenchmark, .{ .iterations = 10 });
+    const results = try bench.run();
+    defer results.deinit();
+    try results.prettyPrint(stdout, true);
 }
 ```
 
@@ -119,38 +120,37 @@ To customize your benchmark runs, zBench provides a `Config` struct that allows 
 pub const Config = struct {
     iterations: u16 = 0,
     max_iterations: u16 = 16384,
-    time_budget: u64 = 2e9, // 2 seconds
-    hooks: LifecycleHooks = .{},
-    display_system_info: bool = false,
+    time_budget_ns: u64 = 2e9, // 2 seconds
+    hooks: Hooks = .{},
 };
 ```
 
 - `iterations`: The number of iterations the benchmark has been run. This field is usually managed by zBench itself.
 - `max_iterations`: Set the maximum number of iterations for a benchmark. Useful for controlling long-running benchmarks.
-- `time_budget`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
-- `hooks`: Set `beforeAll`, `afterAll`, `beforeEach`, and `afterEach` hooks.
-- `display_system_info`: Enable or disable displaying system information alongside the benchmark results.
+- `time_budget_ns`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
+- `hooks`: Set `before_all`, `after_all`, `before_each`, and `after_each` hooks to function pointers.
 
 ### Compatibility Notes
+
 Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users.
 
 ***Supported Version***: As of now, zBench is tested and supported on Zig version ***0.11.0***.
 
 ### Benchmark Functions
+
 Benchmark functions have the following signature:
 
 ```zig
-fn(b: *zbench.Benchmark) void
+fn(allocator: std.mem.Allocator) void
 ```
-The function body contains the code you wish to benchmark.
 
-You can run multiple benchmark functions in a single program by using zBench.run for each benchmark function.
+The function body contains the code you wish to benchmark.
 
 ### Reporting Benchmarks
 
 zBench provides a comprehensive report for each benchmark run. It includes the total operations performed, the average, min, and max durations of operations, and the percentile distribution (p75, p99, p995) of operation durations.
 
-```yaml
+```
 benchmark              runs     time (avg ± σ)         (min ... max)                p75        p99        p995
 ---------------------------------------------------------------------------------------------------------------
 benchmarkMyFunction    1000     1200ms ± 10ms          (100ms ... 2000ms)           1100ms     1900ms     1950ms

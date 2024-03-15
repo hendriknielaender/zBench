@@ -15,17 +15,19 @@ fn bubbleSort(nums: []i32) void {
     }
 }
 
-fn myBenchmark(_: *zbench.Benchmark) void {
+fn myBenchmark(_: std.mem.Allocator) void {
     var numbers = [_]i32{ 4, 1, 3, 1, 5, 2 };
     _ = bubbleSort(&numbers);
 }
 
 test "bench test bubbleSort" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var benchmarkResults = zbench.BenchmarkResults.init(resultsAlloc);
-    defer benchmarkResults.deinit();
-    var bench = try zbench.Benchmark.init("Bubble Sort Benchmark", test_allocator, .{});
+    const stdout = std.io.getStdOut().writer();
+    var bench = zbench.Benchmark.init(test_allocator, .{});
+    defer bench.deinit();
 
-    try zbench.run(myBenchmark, &bench, &benchmarkResults);
-    try benchmarkResults.prettyPrint();
+    try bench.add("Bubble Sort Benchmark", myBenchmark, .{});
+
+    const results = try bench.run();
+    defer results.deinit();
+    try results.prettyPrint(stdout, true);
 }

@@ -21,23 +21,27 @@ fn afterAllHook() void {
     std.debug.print("Finished benchmarking.\n", .{});
 }
 
-fn myBenchmark(_: *zbench.Benchmark) void {
+fn myBenchmark(_: std.mem.Allocator) void {
     _ = helloWorld();
 }
 
 test "bench test basic" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var benchmarkResults = zbench.BenchmarkResults.init(resultsAlloc);
-    defer benchmarkResults.deinit();
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator, .{
+    const stdout = std.io.getStdOut().writer();
+    var bench = zbench.Benchmark.init(test_allocator, .{});
+    defer bench.deinit();
+
+    try bench.add("My Benchmark", myBenchmark, .{
         .iterations = 10,
-        .display_system_info = true,
         .hooks = .{
-            .beforeAll = beforeAllHook,
-            .afterAll = afterAllHook,
+            .before_all = beforeAllHook,
+            .after_all = afterAllHook,
         },
     });
 
-    try zbench.run(myBenchmark, &bench, &benchmarkResults);
-    try benchmarkResults.prettyPrint();
+    const sysinfo = try bench.getSystemInfo();
+    try std.fmt.format(stdout, "\n{}\n", .{sysinfo});
+
+    const results = try bench.run();
+    defer results.deinit();
+    try results.prettyPrint(stdout, true);
 }
