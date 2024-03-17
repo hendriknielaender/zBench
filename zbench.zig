@@ -151,6 +151,16 @@ pub const Results = struct {
         try format.prettyPrintHeader(writer);
         for (self.results) |r| try r.prettyPrint(writer, colors);
     }
+
+    /// Prints the benchmark results in a machine readable JSON format.
+    pub fn writeJSON(self: Results, writer: anytype) !void {
+        try writer.writeAll("{\"benchmarks\": [\n");
+        for (self.results, 0..) |r, i| {
+            if (i != 0) try writer.writeAll(", ");
+            try r.writeJSON(writer);
+        }
+        try writer.writeAll("]}\n");
+    }
 };
 
 /// Carries the results of a benchmark. The benchmark name and the recorded
@@ -252,6 +262,40 @@ pub const Result = struct {
 
     fn setColor(colors: bool, writer: anytype, color: Color) !void {
         if (colors) try writer.writeAll(color.code());
+    }
+
+    pub fn writeJSON(self: Result, writer: anytype) !void {
+        const s = self.statistics;
+        const p = s.percentiles;
+        try std.fmt.format(
+            writer,
+            \\{{ "name": "{s}",
+            \\   "units": "nanoseconds",
+            \\   "total": {d},
+            \\   "mean": {d},
+            \\   "stddev": {d},
+            \\   "min": {d},
+            \\   "max": {d},
+            \\   "percentiles": {{"p75": {d}, "p99": {d}, "p995": {d} }},
+            \\   "timings": [
+        ,
+            .{
+                std.fmt.fmtSliceEscapeLower(self.name),
+                s.total_ns,
+                s.mean_ns,
+                s.stddev_ns,
+                s.min_ns,
+                s.max_ns,
+                p.p75_ns,
+                p.p99_ns,
+                p.p995_ns,
+            },
+        );
+        for (self.timings_ns, 0..) |ns, i| {
+            if (0 < i) try writer.writeAll(", ");
+            try std.fmt.format(writer, "{d}", .{ns});
+        }
+        try writer.writeAll("]}");
     }
 };
 
