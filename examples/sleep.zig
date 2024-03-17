@@ -6,16 +6,18 @@ fn sooSleepy() void {
     std.time.sleep(100_000_000);
 }
 
-fn sleepBenchmark(_: *zbench.Benchmark) void {
+fn sleepBenchmark(_: std.mem.Allocator) void {
     _ = sooSleepy();
 }
 
 test "bench test sleepy" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var benchmarkResults = zbench.BenchmarkResults.init(resultsAlloc);
-    defer benchmarkResults.deinit();
-    var bench = try zbench.Benchmark.init("Sleep Benchmark", test_allocator, .{});
+    const stdout = std.io.getStdOut().writer();
+    var bench = zbench.Benchmark.init(test_allocator, .{});
+    defer bench.deinit();
 
-    try zbench.run(sleepBenchmark, &bench, &benchmarkResults);
-    try benchmarkResults.prettyPrint();
+    try bench.add("Sleep Benchmark", sleepBenchmark, .{});
+
+    const results = try bench.run();
+    defer results.deinit();
+    try results.prettyPrint(stdout, true);
 }

@@ -6,21 +6,16 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
 }
 
 pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
-    const coresString = try exec(allocator, &.{ "sysctl", "-n", "hw.physicalcpu" });
-    defer allocator.free(coresString);
-
-    return std.fmt.parseInt(u32, coresString, 10) catch |err| {
+    const str = try exec(allocator, &.{ "sysctl", "-n", "hw.physicalcpu" });
+    return std.fmt.parseInt(u32, str, 10) catch |err| {
         log.err("Error parsing CPU cores count: {}\n", .{err});
         return err;
     };
 }
 
 pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
-    const memSizeString = try exec(allocator, &.{ "sysctl", "-n", "hw.memsize" });
-    defer allocator.free(memSizeString);
-
-    // Parse the string to a 64-bit unsigned integer
-    return std.fmt.parseInt(u64, memSizeString, 10) catch |err| {
+    const str = try exec(allocator, &.{ "sysctl", "-n", "hw.memsize" });
+    return std.fmt.parseInt(u64, str, 10) catch |err| {
         log.err("Error parsing total memory size: {}\n", .{err});
         return err;
     };
