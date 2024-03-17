@@ -158,34 +158,34 @@ pub const Results = struct {
     pub fn printSummary(self: Results, writer: anytype) !void {
         if (self.results.len == 0) return;
 
-        const bold = Color.bold.code();
-        const resetCode = Color.reset.code();
-        const greenCode = Color.green.code();
-        const blueCode = Color.blue.code();
+        const bold_code = Color.bold.code();
+        const reset_code = Color.reset.code();
+        const green_code = Color.green.code();
+        const blue_code = Color.blue.code();
 
         // Find the fastest result without sorting
-        var fastestIndex: usize = 0;
-        var fastestTime = self.results[0].statistics.mean_ns;
+        var fastest_index: usize = 0;
+        var fastest_time = self.results[0].statistics.mean_ns;
         for (self.results, 0..) |res, i| {
-            if (res.statistics.mean_ns < fastestTime) {
-                fastestTime = res.statistics.mean_ns;
-                fastestIndex = i;
+            if (res.statistics.mean_ns < fastest_time) {
+                fastest_time = res.statistics.mean_ns;
+                fastest_index = i;
             }
         }
 
         // Print Summary Heading in Bold
-        try writer.print("\n \n{s}Summary{s}\n", .{ bold, resetCode });
+        try writer.print("\n \n{s}Summary{s}\n", .{ bold_code, reset_code });
 
-        try writer.print("{s}", .{greenCode});
-        try writer.print("{s}", .{self.results[fastestIndex].name});
-        try writer.print("{s} ran\n", .{resetCode});
+        try writer.print("{s}", .{green_code});
+        try writer.print("{s}", .{self.results[fastest_index].name});
+        try writer.print("{s} ran\n", .{reset_code});
 
         for (self.results, 0..) |res, i| {
-            if (i == fastestIndex) continue; // Skip the fastest since it's already printed
-            const times = @as(f64, @floatFromInt(res.statistics.mean_ns)) / @as(f64, @floatFromInt(fastestTime));
+            if (i == fastest_index) continue; // Skip the fastest since it's already printed
+            const times = @as(f64, @floatFromInt(res.statistics.mean_ns)) / @as(f64, @floatFromInt(fastest_time));
 
-            try writer.print(" └─ {s}{d:.2}x times{s} faster than {s}{s}\n", .{ greenCode, times, resetCode, blueCode, res.name });
-            try writer.print("{s}", .{resetCode});
+            try writer.print(" └─ {s}{d:.2}x times{s} faster than {s}{s}\n", .{ green_code, times, reset_code, blue_code, res.name });
+            try writer.print("{s}", .{reset_code});
         }
     }
 
