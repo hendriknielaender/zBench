@@ -152,6 +152,9 @@ pub const Results = struct {
         for (self.results) |r| try r.prettyPrint(writer, colors);
     }
 
+    /// Prints a summary output at the end of benchmarking sessions
+    /// This summary highlights the fastest benchmark by name in green, and compares each
+    /// subsequent benchmark to show how many times slower they are relative to the fastest.
     pub fn printSummary(self: Results, writer: anytype) !void {
         if (self.results.len == 0) return;
 
