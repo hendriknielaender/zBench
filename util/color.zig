@@ -8,6 +8,7 @@ pub const Color = enum {
     magenta,
     cyan,
     reset,
+    bold,
     none,
 
     // Return the ANSI escape code for this color.
@@ -20,12 +21,8 @@ pub const Color = enum {
             .magenta => "\x1b[35m",
             .cyan => "\x1b[36m",
             .reset => "\x1b[0m",
+            .bold => "\x1b[1m",
             .none => "",
         };
-    }
-
-    // Method to return ANSI escape code for bold text.
-    pub fn bold() []const u8 {
-        return "\x1b[1m";
     }
 };

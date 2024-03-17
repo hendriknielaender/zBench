@@ -2,65 +2,33 @@ const std = @import("std");
 const zbench = @import("zbench");
 const test_allocator = std.testing.allocator;
 
-fn function1() []const u8 {
+fn fastFunction(_: std.mem.Allocator) void {
     var result: usize = 0;
-    var i: usize = 0;
-    while (i < 1000) : (i += 1) {
-        const square = i * i;
-        result += square;
-    }
-
-    return "Hello, world!";
+    for (0..1000) |i| result += i * i;
 }
-
-fn function2() []const u8 {
+fn mediumFunction(_: std.mem.Allocator) void {
     var result: usize = 0;
-    var i: usize = 0;
-    while (i < 20000) : (i += 1) {
-        const square = i * i;
-        result += square;
-    }
-
-    return "Hello, world!";
+    for (0..20000) |i| result += i * i;
 }
-
-fn function3() []const u8 {
+fn slowFunction(_: std.mem.Allocator) void {
     var result: usize = 0;
-    var i: usize = 0;
-    while (i < 300000) : (i += 1) {
-        const square = i * i;
-        result += square;
-    }
-
-    return "Hello, world!";
+    for (0..300000) |i| result += i * i;
 }
 
-fn fn1(_: std.mem.Allocator) void {
-    _ = function1();
-}
-
-fn fn2(_: std.mem.Allocator) void {
-    _ = function2();
-}
-
-fn fn3(_: std.mem.Allocator) void {
-    _ = function3();
-}
-
-test "bench test basic" {
+test "bench test summary" {
     const stdout = std.io.getStdOut().writer();
     var bench = zbench.Benchmark.init(test_allocator, .{});
     defer bench.deinit();
 
-    try bench.add("fast function", fn1, .{
+    try bench.add("fast function", fastFunction, .{
         .iterations = 10,
     });
 
-    try bench.add("medium fast function", fn2, .{
+    try bench.add("medium fast function", mediumFunction, .{
         .iterations = 10,
     });
 
-    try bench.add("slow function", fn3, .{
+    try bench.add("slow function", slowFunction, .{
         .iterations = 10,
     });
 

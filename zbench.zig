@@ -158,7 +158,7 @@ pub const Results = struct {
     pub fn printSummary(self: Results, writer: anytype) !void {
         if (self.results.len == 0) return;
 
-        const bold = Color.bold();
+        const bold = Color.bold.code();
         const resetCode = Color.reset.code();
         const greenCode = Color.green.code();
         const blueCode = Color.blue.code();
