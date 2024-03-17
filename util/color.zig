@@ -23,4 +23,9 @@ pub const Color = enum {
             .none => "",
         };
     }
+
+    // Method to return ANSI escape code for bold text.
+    pub fn bold() []const u8 {
+        return "\x1b[1m";
+    }
 };

@@ -152,6 +152,40 @@ pub const Results = struct {
         for (self.results) |r| try r.prettyPrint(writer, colors);
     }
 
+    pub fn printSummary(self: Results, writer: anytype) !void {
+        if (self.results.len == 0) return;
+
+        const bold = Color.bold();
+        const resetCode = Color.reset.code();
+        const greenCode = Color.green.code();
+        const blueCode = Color.blue.code();
+
+        // Find the fastest result without sorting
+        var fastestIndex: usize = 0;
+        var fastestTime = self.results[0].statistics.mean_ns;
+        for (self.results, 0..) |res, i| {
+            if (res.statistics.mean_ns < fastestTime) {
+                fastestTime = res.statistics.mean_ns;
+                fastestIndex = i;
+            }
+        }
+
+        // Print Summary Heading in Bold
+        try writer.print("\n \n{s}Summary{s}\n", .{ bold, resetCode });
+
+        try writer.print("{s}", .{greenCode});
+        try writer.print("{s}", .{self.results[fastestIndex].name});
+        try writer.print("{s} ran\n", .{resetCode});
+
+        for (self.results, 0..) |res, i| {
+            if (i == fastestIndex) continue; // Skip the fastest since it's already printed
+            const times = @as(f64, @floatFromInt(res.statistics.mean_ns)) / @as(f64, @floatFromInt(fastestTime));
+
+            try writer.print(" └─ {s}{d:.2}x times{s} faster than {s}{s}\n", .{ greenCode, times, resetCode, blueCode, res.name });
+            try writer.print("{s}", .{resetCode});
+        }
+    }
+
     /// Prints the benchmark results in a machine readable JSON format.
     pub fn writeJSON(self: Results, writer: anytype) !void {
         try writer.writeAll("{\"benchmarks\": [\n");

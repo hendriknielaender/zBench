@@ -59,6 +59,7 @@ fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.built
     const example_step = b.step("test_examples", "Build examples");
     const example_names = [_][]const u8{
         "basic",
+        "summary",
         "bubble_sort",
         "sleep",
     };
