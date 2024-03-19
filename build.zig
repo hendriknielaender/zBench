@@ -1,7 +1,7 @@
 const std = @import("std");
 const log = std.log.scoped(.zbench_build);
 
-const version = std.SemanticVersion{ .major = 0, .minor = 5, .patch = 0 };
+const version = std.SemanticVersion{ .major = 0, .minor = 6, .patch = 0 };
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -61,7 +61,11 @@ fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.built
         "basic",
         "summary",
         "bubble_sort",
+        "hooks",
+        "parameterised",
+        "progress",
         "sleep",
+        "systeminfo",
     };
 
     for (example_names) |example_name| {

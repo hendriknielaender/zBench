@@ -36,6 +36,9 @@ const State = union(enum) {
     };
 
     const Running = struct {
+        /// Total number of iterations done.
+        iterations_count: usize,
+
         /// Number of timings still to be performed in the benchmark.
         iterations_remaining: usize,
 
@@ -62,6 +65,7 @@ pub fn init(
     } else .{
         .allocator = allocator,
         .state = .{ .running = .{
+            .iterations_count = iterations,
             .iterations_remaining = iterations,
             .timings_ns = try allocator.alloc(u64, iterations),
         } },
@@ -92,6 +96,7 @@ pub fn next(self: *Runner, ns: u64) Runner.Error!?Runner.Step {
                 if (N > MAX_N) N = MAX_N;
                 // Now run the benchmark with the adjusted N value
                 self.state = .{ .running = .{
+                    .iterations_count = N,
                     .iterations_remaining = N,
                     .timings_ns = try self.allocator.alloc(u64, N),
                 } };
@@ -122,6 +127,24 @@ pub fn abort(self: *Runner) void {
     return switch (self.state) {
         .preparing => {},
         .running => |st| self.allocator.free(st.timings_ns),
+    };
+}
+
+pub const Status = struct {
+    total_runs: usize,
+    completed_runs: usize,
+};
+
+pub fn status(self: Runner) Status {
+    return switch (self.state) {
+        .preparing => |_| Status{
+            .total_runs = 0,
+            .completed_runs = 0,
+        },
+        .running => |st| Status{
+            .total_runs = st.iterations_count,
+            .completed_runs = st.iterations_count - st.iterations_remaining,
+        },
     };
 }
 

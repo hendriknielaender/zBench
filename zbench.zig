@@ -10,7 +10,7 @@ const format = @import("./util/format.zig");
 const Optional = @import("./util/optional.zig").Optional;
 const optional = @import("./util/optional.zig").optional;
 const platform = @import("./util/platform.zig");
-const runner = @import("./util/runner.zig");
+const Runner = @import("./util/runner.zig");
 
 /// Hooks containing optional hooks for lifecycle events in benchmarking.
 /// Each field in this struct is a nullable function pointer.
@@ -51,12 +51,21 @@ pub const Config = struct {
 /// A benchmark definition.
 const Definition = struct {
     name: []const u8,
-    func: BenchFunc,
     config: Config,
+    defn: union(enum) {
+        simple: BenchFunc,
+        parameterised: struct {
+            func: ParameterisedFunc,
+            context: *const anyopaque,
+        },
+    },
 };
 
 /// A function pointer type that represents a benchmark function.
 pub const BenchFunc = *const fn (std.mem.Allocator) void;
+
+/// A function pointer type that represents a parameterised benchmark function.
+pub const ParameterisedFunc = *const fn (*const anyopaque, std.mem.Allocator) void;
 
 /// Benchmark manager, add your benchmark functions and run measure them.
 pub const Benchmark = struct {
@@ -84,30 +93,155 @@ pub const Benchmark = struct {
     ) !void {
         try self.benchmarks.append(self.allocator, Definition{
             .name = name,
-            .func = func,
+            .defn = .{ .simple = func },
             .config = optional(Config, config, self.common_config),
         });
     }
 
-    /// Run all benchmarks and collect timing information.
-    pub fn run(self: Benchmark) !Results {
-        const n_benchmarks = self.benchmarks.items.len;
-        const results = try self.allocator.alloc(Result, n_benchmarks);
-        for (self.benchmarks.items, results) |b, *result| {
-            if (b.config.hooks.before_all) |hook| hook();
-            defer if (b.config.hooks.after_all) |hook| hook();
+    /// Add a benchmark function to be timed with `run()`.
+    pub fn addParam(
+        self: *Benchmark,
+        name: []const u8,
+        benchmark: anytype,
+        config: Optional(Config),
+    ) !void {
+        // Check the benchmark parameter is the proper type.
+        const T: type = switch (@typeInfo(@TypeOf(benchmark))) {
+            .Pointer => |ptr| if (ptr.is_const) ptr.child else @compileError(
+                "benchmark must be a const ptr to a struct with a 'run' method",
+            ),
+            else => @compileError(
+                "benchmark must be a const ptr to a struct with a 'run' method",
+            ),
+        };
 
-            var r = try runner.init(
-                self.allocator,
-                b.config.iterations,
-                b.config.max_iterations,
-                b.config.time_budget_ns,
-            );
-            errdefer r.abort();
-            while (try r.next(try self.runFunc(b))) |_| {}
-            result.* = try Result.init(self.allocator, b.name, try r.finish());
+        // Check the benchmark parameter has a well typed run function.
+        _ = @as(fn (T, std.mem.Allocator) void, T.run);
+
+        try self.benchmarks.append(self.allocator, Definition{
+            .name = name,
+            .defn = .{ .parameterised = .{
+                .func = @ptrCast(&T.run),
+                .context = @ptrCast(benchmark),
+            } },
+            .config = optional(Config, config, self.common_config),
+        });
+    }
+
+    /// An incremental API for getting progress updates on running benchmarks.
+    pub const Iterator = struct {
+        allocator: std.mem.Allocator,
+        b: *const Benchmark,
+        remaining: []const Definition,
+        runner: ?Runner,
+
+        /// A summary of progress through benchmarking a function. The
+        /// total_runs field may vary over time as the runner calibrates how
+        /// many runs to perform.
+        pub const Progress = struct {
+            total_benchmarks: usize,
+            completed_benchmarks: usize,
+            current_name: []const u8,
+            total_runs: usize,
+            completed_runs: usize,
+        };
+
+        /// A progress update from the iterator; reports either that it's some
+        /// way through benchmarking a function, or it has collected the results
+        /// for a benchmark.
+        pub const Step = union(enum) {
+            progress: Progress,
+            result: Result,
+        };
+
+        /// Get the next response.
+        pub fn next(self: *Iterator) !?Step {
+            if (self.remaining.len == 0) return null;
+
+            var runner: *Runner = if (self.runner) |*r| r else blk: {
+                const config = self.remaining[0].config;
+                if (config.hooks.before_all) |hook| hook();
+                self.runner = try Runner.init(
+                    self.allocator,
+                    config.iterations,
+                    config.max_iterations,
+                    config.time_budget_ns,
+                );
+                break :blk &self.runner.?;
+            };
+
+            const runner_step = blk: {
+                errdefer self.abort();
+                const ns = try self.b.runFunc(self.remaining[0]);
+                break :blk try runner.next(ns);
+            };
+            if (runner_step) |_| {
+                const total_benchmarks = self.b.benchmarks.items.len;
+                const remaining_benchmarks = self.remaining.len;
+                const runner_status = runner.status();
+                return Step{ .progress = Progress{
+                    .total_benchmarks = total_benchmarks,
+                    .completed_benchmarks = total_benchmarks - remaining_benchmarks,
+                    .current_name = self.remaining[0].name,
+                    .total_runs = runner_status.total_runs,
+                    .completed_runs = runner_status.completed_runs,
+                } };
+            } else {
+                defer self.runner = null;
+                defer self.remaining = self.remaining[1..];
+                if (self.remaining[0].config.hooks.after_all) |hook| hook();
+                return Step{ .result = try Result.init(
+                    self.allocator,
+                    self.remaining[0].name,
+                    try runner.finish(),
+                ) };
+            }
         }
-        return Results{ .allocator = self.allocator, .results = results };
+
+        /// Clean up the iterator if an error has occurred.
+        pub fn abort(self: *Iterator) void {
+            if (self.runner) |*r| {
+                if (self.remaining[0].config.hooks.after_all) |hook| hook();
+                r.abort();
+            }
+        }
+    };
+
+    /// Run all benchmarks using an iterator, collecting progress information
+    /// incrementally.
+    pub fn iterator(self: Benchmark) !Iterator {
+        return Iterator{
+            .allocator = self.allocator,
+            .b = &self,
+            .remaining = self.benchmarks.items,
+            .runner = null,
+        };
+    }
+
+    /// Run all benchmarks and collect timing information.
+    pub fn run(self: Benchmark, writer: anytype) !void {
+        var progress = std.Progress{};
+        const progress_node = progress.start("", 0);
+        defer progress_node.end();
+
+        try self.prettyPrintHeader(writer);
+        var iter = try self.iterator();
+        while (try iter.next()) |step| switch (step) {
+            .progress => |p| {
+                progress_node.setEstimatedTotalItems(p.total_runs);
+                progress_node.setCompletedItems(p.completed_runs);
+                progress_node.setName(p.current_name);
+                progress.maybeRefresh();
+            },
+            .result => |x| {
+                defer x.deinit();
+                progress_node.setName("");
+                progress_node.setEstimatedTotalItems(0);
+                progress_node.setCompletedItems(0);
+                progress.refresh();
+                try x.prettyPrint(writer, true);
+            },
+        };
     }
 
     /// Run and time a benchmark function once, as well as running before and
@@ -117,7 +251,10 @@ pub const Benchmark = struct {
         defer if (defn.config.hooks.after_each) |hook| hook();
 
         var t = try std.time.Timer.start();
-        defn.func(self.allocator);
+        switch (defn.defn) {
+            .simple => |func| func(self.allocator),
+            .parameterised => |x| x.func(@ptrCast(x.context), self.allocator),
+        }
         return t.read();
     }
 
