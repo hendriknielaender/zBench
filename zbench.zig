@@ -51,12 +51,21 @@ pub const Config = struct {
 /// A benchmark definition.
 const Definition = struct {
     name: []const u8,
-    func: BenchFunc,
     config: Config,
+    defn: union(enum) {
+        simple: BenchFunc,
+        parameterised: struct {
+            func: ParameterisedFunc,
+            context: *const anyopaque,
+        },
+    },
 };
 
 /// A function pointer type that represents a benchmark function.
 pub const BenchFunc = *const fn (std.mem.Allocator) void;
+
+/// A function pointer type that represents a parameterised benchmark function.
+pub const ParameterisedFunc = *const fn (*const anyopaque, std.mem.Allocator) void;
 
 /// Benchmark manager, add your benchmark functions and run measure them.
 pub const Benchmark = struct {
@@ -84,7 +93,37 @@ pub const Benchmark = struct {
     ) !void {
         try self.benchmarks.append(self.allocator, Definition{
             .name = name,
-            .func = func,
+            .defn = .{ .simple = func },
+            .config = optional(Config, config, self.common_config),
+        });
+    }
+
+    /// Add a benchmark function to be timed with `run()`.
+    pub fn addParam(
+        self: *Benchmark,
+        name: []const u8,
+        benchmark: anytype,
+        config: Optional(Config),
+    ) !void {
+        // Check the benchmark parameter is the proper type.
+        const T: type = switch (@typeInfo(@TypeOf(benchmark))) {
+            .Pointer => |ptr| if (ptr.is_const) ptr.child else @compileError(
+                "benchmark must be a const ptr to a struct with a 'run' method",
+            ),
+            else => @compileError(
+                "benchmark must be a const ptr to a struct with a 'run' method",
+            ),
+        };
+
+        // Check the benchmark parameter has a well typed run function.
+        _ = @as(fn (T, std.mem.Allocator) void, T.run);
+
+        try self.benchmarks.append(self.allocator, Definition{
+            .name = name,
+            .defn = .{ .parameterised = .{
+                .func = @ptrCast(&T.run),
+                .context = @ptrCast(benchmark),
+            } },
             .config = optional(Config, config, self.common_config),
         });
     }
@@ -117,7 +156,10 @@ pub const Benchmark = struct {
         defer if (defn.config.hooks.after_each) |hook| hook();
 
         var t = try std.time.Timer.start();
-        defn.func(self.allocator);
+        switch (defn.defn) {
+            .simple => |func| func(self.allocator),
+            .parameterised => |x| x.func(@ptrCast(x.context), self.allocator),
+        }
         return t.read();
     }
 
