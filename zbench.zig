@@ -190,9 +190,8 @@ pub const Benchmark = struct {
 
             const runner_step = blk: {
                 errdefer self.abort();
-                break :blk try runner.next(
-                    try self.remaining[0].run(self.allocator),
-                );
+                const reading = try self.remaining[0].run(self.allocator);
+                break :blk try runner.next(reading);
             };
             if (runner_step) |_| {
                 const total_benchmarks = self.b.benchmarks.items.len;
