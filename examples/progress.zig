@@ -31,7 +31,7 @@ test "bench test progress" {
     defer progress_node.end();
 
     try stdout.writeAll("\n");
-    try bench.prettyPrintHeader(stdout);
+    try zbench.prettyPrintHeader(stdout);
     var iter = try bench.iterator();
     while (try iter.next()) |step| switch (step) {
         .progress => |p| {

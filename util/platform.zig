@@ -1,8 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const format = @import("format.zig");
-
 const lnx = @import("os/linux.zig");
 const mac = @import("os/osx.zig");
 const win = @import("os/windows.zig");

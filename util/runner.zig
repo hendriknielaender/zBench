@@ -4,6 +4,9 @@ const expectEqSlices = std.testing.expectEqualSlices;
 
 pub const Error = @import("./runner/types.zig").Error;
 pub const Step = @import("./runner/types.zig").Step;
+pub const Reading = @import("./runner/types.zig").Reading;
+pub const Readings = @import("./runner/types.zig").Readings;
+
 const Runner = @This();
 
 const State = union(enum) {
@@ -55,7 +58,7 @@ pub fn init(
     iterations: u16,
     max_iterations: u16,
     time_budget_ns: u64,
-) !Runner {
+) Error!Runner {
     return if (iterations == 0) .{
         .allocator = allocator,
         .state = .{ .preparing = .{
@@ -72,12 +75,12 @@ pub fn init(
     };
 }
 
-pub fn next(self: *Runner, ns: u64) Runner.Error!?Runner.Step {
+pub fn next(self: *Runner, reading: Reading) Error!?Step {
     const MAX_N = 65536;
     switch (self.state) {
         .preparing => |*st| {
             if (st.elapsed_ns < st.time_budget_ns and st.iteration_loops < st.max_iterations) {
-                st.elapsed_ns += ns;
+                st.elapsed_ns += reading.timing_ns;
                 if (st.iterations_remaining == 0) {
                     // double N for next iteration
                     st.N = @min(st.N * 2, MAX_N);
@@ -105,7 +108,8 @@ pub fn next(self: *Runner, ns: u64) Runner.Error!?Runner.Step {
         },
         .running => |*st| {
             if (0 < st.iterations_remaining) {
-                st.timings_ns[st.timings_ns.len - st.iterations_remaining] = ns;
+                const i = st.timings_ns.len - st.iterations_remaining;
+                st.timings_ns[i] = reading.timing_ns;
                 st.iterations_remaining -= 1;
             }
             return if (st.iterations_remaining == 0) null else .more;
@@ -115,10 +119,14 @@ pub fn next(self: *Runner, ns: u64) Runner.Error!?Runner.Step {
 
 /// The next() function has returned null and there are no more steps to
 /// complete, so get the timing results.
-pub fn finish(self: *Runner) Runner.Error![]u64 {
+pub fn finish(self: *Runner) Error!Readings {
     return switch (self.state) {
-        .preparing => &.{},
-        .running => |st| st.timings_ns,
+        .preparing => .{
+            .timings_ns = &.{},
+        },
+        .running => |st| .{
+            .timings_ns = st.timings_ns,
+        },
     };
 }
 
@@ -152,30 +160,30 @@ test "Runner" {
     var r = try Runner.init(std.testing.allocator, 0, 16384, 2e9);
     {
         errdefer r.abort();
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(Runner.Step.more, try r.next(200_000_000));
-        try expectEq(@as(?Runner.Step, null), try r.next(200_000_000));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000)));
+        try expectEq(@as(?Step, null), try r.next(Reading.init(200_000_000)));
     }
-    const timings_ns = try r.finish();
-    defer std.testing.allocator.free(timings_ns);
+    const result = try r.finish();
+    defer std.testing.allocator.free(result.timings_ns);
     try expectEqSlices(u64, &.{
         200_000_000, 200_000_000, 200_000_000, 200_000_000,
         200_000_000, 200_000_000, 200_000_000, 200_000_000,
-    }, timings_ns);
+    }, result.timings_ns);
 }
