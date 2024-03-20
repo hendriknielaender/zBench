@@ -1,5 +1,6 @@
 const std = @import("std");
 
+/// Collect common statistical calculations together.
 pub fn Statistics(comptime T: type) type {
     return struct {
         total: T,

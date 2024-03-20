@@ -17,7 +17,14 @@ test "bench test json" {
     var bench = zbench.Benchmark.init(test_allocator, .{});
     defer bench.deinit();
 
-    try bench.add("My Benchmark 1", myBenchmark, .{ .iterations = 10 });
+    try bench.add("My Benchmark 1", myBenchmark, .{
+        .iterations = 10,
+        .track_allocations = false,
+    });
+    try bench.add("My Benchmark 2", myBenchmark, .{
+        .iterations = 10,
+        .track_allocations = true,
+    });
 
     try stdout.writeAll("[");
     var iter = try bench.iterator();
