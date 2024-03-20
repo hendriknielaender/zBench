@@ -318,42 +318,40 @@ pub const Result = struct {
     pub fn prettyPrint(self: Result, writer: anytype, colors: bool) !void {
         var buf: [128]u8 = undefined;
 
-        {
-            const s = Statistics(u64).init(self.timings_ns);
-            // Benchmark name, number of iterations, and total time
-            try writer.print("{s:<22} ", .{self.name});
-            try setColor(colors, writer, Color.cyan);
-            try writer.print("{d:<8} {s:<15}", .{
-                self.timings_ns.len,
-                std.fmt.fmtDuration(s.total),
-            });
-            // Mean + standard deviation
-            try setColor(colors, writer, Color.green);
-            try writer.print("{s:<23}", .{
-                try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
-                    std.fmt.fmtDuration(s.mean),
-                    std.fmt.fmtDuration(s.stddev),
-                }),
-            });
-            // Minimum and maximum
-            try setColor(colors, writer, Color.blue);
-            try writer.print("{s:<29}", .{
-                try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
-                    std.fmt.fmtDuration(s.min),
-                    std.fmt.fmtDuration(s.max),
-                }),
-            });
-            // Percentiles
-            try setColor(colors, writer, Color.cyan);
-            try writer.print("{:<10} {:<10} {:<10}", .{
-                std.fmt.fmtDuration(s.percentiles.p75),
-                std.fmt.fmtDuration(s.percentiles.p99),
-                std.fmt.fmtDuration(s.percentiles.p995),
-            });
-            // End of line
-            try setColor(colors, writer, Color.reset);
-            try writer.writeAll("\n");
-        }
+        const s = Statistics(u64).init(self.timings_ns);
+        // Benchmark name, number of iterations, and total time
+        try writer.print("{s:<22} ", .{self.name});
+        try setColor(colors, writer, Color.cyan);
+        try writer.print("{d:<8} {s:<15}", .{
+            self.timings_ns.len,
+            std.fmt.fmtDuration(s.total),
+        });
+        // Mean + standard deviation
+        try setColor(colors, writer, Color.green);
+        try writer.print("{s:<23}", .{
+            try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
+                std.fmt.fmtDuration(s.mean),
+                std.fmt.fmtDuration(s.stddev),
+            }),
+        });
+        // Minimum and maximum
+        try setColor(colors, writer, Color.blue);
+        try writer.print("{s:<29}", .{
+            try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
+                std.fmt.fmtDuration(s.min),
+                std.fmt.fmtDuration(s.max),
+            }),
+        });
+        // Percentiles
+        try setColor(colors, writer, Color.cyan);
+        try writer.print("{:<10} {:<10} {:<10}", .{
+            std.fmt.fmtDuration(s.percentiles.p75),
+            std.fmt.fmtDuration(s.percentiles.p99),
+            std.fmt.fmtDuration(s.percentiles.p995),
+        });
+        // End of line
+        try setColor(colors, writer, Color.reset);
+        try writer.writeAll("\n");
     }
 
     fn setColor(colors: bool, writer: anytype, color: Color) !void {
