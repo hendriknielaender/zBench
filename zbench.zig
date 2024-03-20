@@ -220,25 +220,12 @@ pub const Benchmark = struct {
 
     /// Run all benchmarks and collect timing information.
     pub fn run(self: Benchmark, writer: anytype) !void {
-        var progress = std.Progress{};
-        const progress_node = progress.start("", 0);
-        defer progress_node.end();
-
         try self.prettyPrintHeader(writer);
         var iter = try self.iterator();
         while (try iter.next()) |step| switch (step) {
-            .progress => |p| {
-                progress_node.setEstimatedTotalItems(p.total_runs);
-                progress_node.setCompletedItems(p.completed_runs);
-                progress_node.setName(p.current_name);
-                progress.maybeRefresh();
-            },
+            .progress => |_| {},
             .result => |x| {
                 defer x.deinit();
-                progress_node.setName("");
-                progress_node.setEstimatedTotalItems(0);
-                progress_node.setCompletedItems(0);
-                progress.refresh();
                 try x.prettyPrint(writer, true);
             },
         };
