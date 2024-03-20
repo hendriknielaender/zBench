@@ -4,15 +4,24 @@ const test_allocator = std.testing.allocator;
 
 fn fastFunction(_: std.mem.Allocator) void {
     var result: usize = 0;
-    for (0..1000) |i| result += i * i;
+    for (0..1_000) |i| {
+        std.mem.doNotOptimizeAway(i);
+        result += i * i;
+    }
 }
 fn mediumFunction(_: std.mem.Allocator) void {
     var result: usize = 0;
-    for (0..20000) |i| result += i * i;
+    for (0..20_000) |i| {
+        std.mem.doNotOptimizeAway(i);
+        result += i * i;
+    }
 }
 fn slowFunction(_: std.mem.Allocator) void {
     var result: usize = 0;
-    for (0..300000) |i| result += i * i;
+    for (0..300_000) |i| {
+        std.mem.doNotOptimizeAway(i);
+        result += i * i;
+    }
 }
 
 test "bench test summary" {
@@ -32,9 +41,6 @@ test "bench test summary" {
         .iterations = 10,
     });
 
-    const results = try bench.run();
-    defer results.deinit();
-
-    try results.prettyPrint(stdout, true);
-    try results.printSummary(stdout);
+    try stdout.writeAll("\n");
+    try zbench.prettyPrintHeader(stdout);
 }
