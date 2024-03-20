@@ -300,11 +300,6 @@ pub const Results = struct {
     pub fn printSummary(self: Results, writer: anytype) !void {
         if (self.results.len == 0) return;
 
-        const bold_code = Color.bold.code();
-        const reset_code = Color.reset.code();
-        const green_code = Color.green.code();
-        const blue_code = Color.blue.code();
-
         // Find the fastest result without sorting
         var fastest_index: usize = 0;
         var fastest_time = self.results[0].statistics.mean_ns;
@@ -316,18 +311,18 @@ pub const Results = struct {
         }
 
         // Print Summary Heading in Bold
-        try writer.print("\n \n{s}Summary{s}\n", .{ bold_code, reset_code });
+        try writer.print("\n \n{s}Summary{s}\n", .{ Color.bold.code(), Color.reset.code() });
 
-        try writer.print("{s}", .{green_code});
+        try writer.print("{s}", .{Color.green.code()});
         try writer.print("{s}", .{self.results[fastest_index].name});
-        try writer.print("{s} ran\n", .{reset_code});
+        try writer.print("{s} ran\n", .{Color.reset.code()});
 
         for (self.results, 0..) |res, i| {
             if (i == fastest_index) continue; // Skip the fastest since it's already printed
             const times = @as(f64, @floatFromInt(res.statistics.mean_ns)) / @as(f64, @floatFromInt(fastest_time));
 
-            try writer.print(" └─ {s}{d:.2}x times{s} faster than {s}{s}\n", .{ green_code, times, reset_code, blue_code, res.name });
-            try writer.print("{s}", .{reset_code});
+            try writer.print(" └─ {s}{d:.2}x times{s} faster than {s}{s}\n", .{ Color.green.code(), times, Color.reset.code(), Color.blue.code(), res.name });
+            try writer.print("{s}", .{Color.reset.code()});
         }
     }
 
