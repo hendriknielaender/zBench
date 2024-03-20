@@ -105,10 +105,8 @@ You can then run your benchmarks in a test:
 test "bench test" {
     var bench = zbench.Benchmark.init(std.testing.allocator, .{});
     defer bench.deinit();
-    try bench.add("My Benchmark", myBenchmark, .{ .iterations = 10 });
-    const results = try bench.run();
-    defer results.deinit();
-    try results.prettyPrint(stdout, true);
+    try bench.add("My Benchmark", myBenchmark, .{});
+    try bench.run(std.io.getStdOut().writer());
 }
 ```
 
