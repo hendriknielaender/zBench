@@ -17,6 +17,8 @@ pub fn Statistics(comptime T: type) type {
             p995: T,
         };
 
+        /// Create a statistical summary of a dataset, NB. assumes that the
+        /// readings are sorted.
         pub fn init(readings: []const T) Self {
             const len = readings.len;
 
@@ -90,123 +92,78 @@ pub fn fmtJSON(
     return .{ .data = .{ unit, stats } };
 }
 
-// test "Statistics" {
-//     {
-//         var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-//         var allocs = std.ArrayList(usize).init(std.testing.allocator);
-//         const r = try Result.init(
-//             std.testing.allocator,
-//             "r",
-//             try timings_ns.toOwnedSlice(),
-//             try allocs.toOwnedSlice(),
-//         );
-//         defer r.deinit();
-//         const s = statistics.Statistics(u64).init(r.timings_ns);
-//         try expectEq(@as(u64, 0), r.timings_ns_stats.mean);
-//         try expectEq(@as(u64, 0), r.timings_ns_stats.stddev);
-//     }
+test "Statistics" {
+    const expectEqDeep = std.testing.expectEqualDeep;
+    {
+        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        defer timings_ns.deinit();
+        try expectEqDeep(Statistics(u64){
+            .total = 0,
+            .mean = 0,
+            .stddev = 0,
+            .min = 0,
+            .max = 0,
+            .percentiles = .{
+                .p75 = 0,
+                .p99 = 0,
+                .p995 = 0,
+            },
+        }, Statistics(u64).init(timings_ns.items));
+    }
 
-//     {
-//         var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-//         var allocs = std.ArrayList(usize).init(std.testing.allocator);
-//         try timings_ns.append(1);
-//         try allocs.append(1);
-//         const r = try Result.init(
-//             std.testing.allocator,
-//             "r",
-//             try timings_ns.toOwnedSlice(),
-//             try allocs.toOwnedSlice(),
-//         );
-//         defer r.deinit();
-//         try expectEq(@as(u64, 1), r.timings_ns_stats.mean);
-//         try expectEq(@as(u64, 0), r.timings_ns_stats.stddev);
-//     }
+    {
+        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        defer timings_ns.deinit();
+        try timings_ns.append(1);
+        try expectEqDeep(Statistics(u64){
+            .total = 1,
+            .mean = 1,
+            .stddev = 0,
+            .min = 1,
+            .max = 1,
+            .percentiles = .{
+                .p75 = 1,
+                .p99 = 1,
+                .p995 = 1,
+            },
+        }, Statistics(u64).init(timings_ns.items));
+    }
 
-//     {
-//         var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-//         var allocs = std.ArrayList(usize).init(std.testing.allocator);
-//         try timings_ns.append(1);
-//         try allocs.append(1);
-//         for (1..16) |i| try timings_ns.append(i);
-//         for (1..16) |i| try allocs.append(i);
-//         const r = try Result.init(
-//             std.testing.allocator,
-//             "r",
-//             try timings_ns.toOwnedSlice(),
-//             try allocs.toOwnedSlice(),
-//         );
-//         defer r.deinit();
-//         try expectEq(@as(u64, 7), r.timings_ns_stats.mean);
-//         try expectEq(@as(u64, 4), r.timings_ns_stats.stddev);
-//     }
+    {
+        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        defer timings_ns.deinit();
+        try timings_ns.append(1);
+        for (1..16) |i| try timings_ns.append(i);
+        try expectEqDeep(Statistics(u64){
+            .total = 121,
+            .mean = 7,
+            .stddev = 4,
+            .min = 1,
+            .max = 15,
+            .percentiles = .{
+                .p75 = 12,
+                .p99 = 15,
+                .p995 = 15,
+            },
+        }, Statistics(u64).init(timings_ns.items));
+    }
 
-//     {
-//         var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-//         var allocs = std.ArrayList(usize).init(std.testing.allocator);
-//         try timings_ns.append(1);
-//         try allocs.append(1);
-//         for (1..101) |i| try timings_ns.append(i);
-//         for (1..101) |i| try allocs.append(i);
-//         const r = try Result.init(
-//             std.testing.allocator,
-//             "r",
-//             try timings_ns.toOwnedSlice(),
-//             try allocs.toOwnedSlice(),
-//         );
-//         defer r.deinit();
-//         try expectEq(@as(u64, 50), r.timings_ns_stats.mean);
-//         try expectEq(@as(u64, 29), r.timings_ns_stats.stddev);
-//     }
-
-//     {
-//         var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-//         var allocs = std.ArrayList(usize).init(std.testing.allocator);
-//         for (0..10) |_| try timings_ns.append(1);
-//         for (0..10) |_| try allocs.append(1);
-//         const r = try Result.init(
-//             std.testing.allocator,
-//             "r",
-//             try timings_ns.toOwnedSlice(),
-//             try allocs.toOwnedSlice(),
-//         );
-//         defer r.deinit();
-//         try expectEq(@as(u64, 1), r.timings_ns_stats.mean);
-//         try expectEq(@as(u64, 0), r.timings_ns_stats.stddev);
-//     }
-
-//     {
-//         var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-//         var allocs = std.ArrayList(usize).init(std.testing.allocator);
-//         for (0..100) |i| try timings_ns.append(i);
-//         for (0..100) |i| try allocs.append(i);
-//         const r = try Result.init(
-//             std.testing.allocator,
-//             "r",
-//             try timings_ns.toOwnedSlice(),
-//             try allocs.toOwnedSlice(),
-//         );
-//         defer r.deinit();
-//         try expectEq(@as(u64, 75), r.timings_ns_stats.percentiles.p75);
-//         try expectEq(@as(u64, 99), r.timings_ns_stats.percentiles.p99);
-//         try expectEq(@as(u64, 99), r.timings_ns_stats.percentiles.p995);
-//     }
-
-//     {
-//         var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-//         var allocs = std.ArrayList(usize).init(std.testing.allocator);
-//         for (0..100) |i| try timings_ns.append(i);
-//         for (0..100) |i| try allocs.append(i);
-//         std.mem.reverse(u64, timings_ns.items);
-//         std.mem.reverse(u64, allocs.items);
-//         const r = try Result.init(
-//             std.testing.allocator,
-//             "r",
-//             try timings_ns.toOwnedSlice(),
-//             try allocs.toOwnedSlice(),
-//         );
-//         defer r.deinit();
-//         try expectEq(@as(u64, 75), r.timings_ns_stats.percentiles.p75);
-//         try expectEq(@as(u64, 99), r.timings_ns_stats.percentiles.p99);
-//         try expectEq(@as(u64, 99), r.timings_ns_stats.percentiles.p995);
-//     }
-// }
+    {
+        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        defer timings_ns.deinit();
+        try timings_ns.append(1);
+        for (1..101) |i| try timings_ns.append(i);
+        try expectEqDeep(Statistics(u64){
+            .total = 5051,
+            .mean = 50,
+            .stddev = 29,
+            .min = 1,
+            .max = 100,
+            .percentiles = .{
+                .p75 = 75,
+                .p99 = 99,
+                .p995 = 100,
+            },
+        }, Statistics(u64).init(timings_ns.items));
+    }
+}
