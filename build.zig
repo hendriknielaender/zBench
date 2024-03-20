@@ -61,6 +61,7 @@ fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.built
         "basic",
         "bubble_sort",
         "hooks",
+        "json",
         "parameterised",
         "progress",
         "sleep",
