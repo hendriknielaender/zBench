@@ -1,12 +1,14 @@
 const std = @import("std");
 const zbench = @import("zbench");
 
-fn myBenchmark(_: std.mem.Allocator) void {
+fn myBenchmark(allocator: std.mem.Allocator) void {
     var result: usize = 0;
     for (0..1_000_000) |i| {
         std.mem.doNotOptimizeAway(i);
         result += i * i;
     }
+    const buf = allocator.alloc(u8, 512) catch @panic("OOM");
+    defer allocator.free(buf);
 }
 
 test "bench test basic" {
