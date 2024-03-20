@@ -29,5 +29,7 @@ test "bench test hooks" {
             .after_all = afterAllHook,
         },
     });
+
+    try stdout.writeAll("\n");
     try bench.run(stdout);
 }
