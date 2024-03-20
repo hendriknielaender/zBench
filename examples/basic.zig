@@ -15,5 +15,7 @@ test "bench test basic" {
     defer bench.deinit();
 
     try bench.add("My Benchmark", myBenchmark, .{});
+
+    try stdout.writeAll("\n");
     try bench.run(stdout);
 }

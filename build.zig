@@ -39,6 +39,7 @@ fn setupTesting(b: *std.Build, target: std.zig.CrossTarget, optimize: std.builti
         .{ .name = "optional", .path = "util/optional.zig" },
         .{ .name = "platform", .path = "util/platform.zig" },
         .{ .name = "runner", .path = "util/runner.zig" },
+        .{ .name = "statistics", .path = "util/statistics.zig" },
         .{ .name = "zbench", .path = "zbench.zig" },
     };
 
@@ -61,6 +62,7 @@ fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.built
         "basic",
         "bubble_sort",
         "hooks",
+        "json",
         "parameterised",
         "progress",
         "sleep",

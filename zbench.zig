@@ -5,6 +5,8 @@
 const std = @import("std");
 const expectEq = std.testing.expectEqual;
 
+pub const statistics = @import("./util/statistics.zig");
+const Statistics = statistics.Statistics;
 const Color = @import("./util/color.zig").Color;
 const format = @import("./util/format.zig");
 const Optional = @import("./util/optional.zig").Optional;
@@ -14,7 +16,7 @@ const Runner = @import("./util/runner.zig");
 
 /// Hooks containing optional hooks for lifecycle events in benchmarking.
 /// Each field in this struct is a nullable function pointer.
-const Hooks = struct {
+pub const Hooks = struct {
     before_all: ?*const fn () void = null,
     after_all: ?*const fn () void = null,
     before_each: ?*const fn () void = null,
@@ -59,6 +61,22 @@ const Definition = struct {
             context: *const anyopaque,
         },
     },
+
+    /// Run and time a benchmark function once, as well as running before and
+    /// after hooks.
+    fn run(self: Definition, allocator: std.mem.Allocator) !Runner.Reading {
+        if (self.config.hooks.before_each) |hook| hook();
+        defer if (self.config.hooks.after_each) |hook| hook();
+
+        var t = try std.time.Timer.start();
+        switch (self.defn) {
+            .simple => |func| func(allocator),
+            .parameterised => |x| x.func(@ptrCast(x.context), allocator),
+        }
+        return Runner.Reading{
+            .timing_ns = t.read(),
+        };
+    }
 };
 
 /// A function pointer type that represents a benchmark function.
@@ -172,8 +190,8 @@ pub const Benchmark = struct {
 
             const runner_step = blk: {
                 errdefer self.abort();
-                const ns = try self.b.runFunc(self.remaining[0]);
-                break :blk try runner.next(ns);
+                const reading = try self.remaining[0].run(self.allocator);
+                break :blk try runner.next(reading);
             };
             if (runner_step) |_| {
                 const total_benchmarks = self.b.benchmarks.items.len;
@@ -224,7 +242,7 @@ pub const Benchmark = struct {
         const progress_node = progress.start("", 0);
         defer progress_node.end();
 
-        try self.prettyPrintHeader(writer);
+        try prettyPrintHeader(writer);
         var iter = try self.iterator();
         while (try iter.next()) |step| switch (step) {
             .progress => |p| {
@@ -243,31 +261,31 @@ pub const Benchmark = struct {
             },
         };
     }
-
-    /// Run and time a benchmark function once, as well as running before and
-    /// after hooks.
-    fn runFunc(self: Benchmark, defn: Definition) !u64 {
-        if (defn.config.hooks.before_each) |hook| hook();
-        defer if (defn.config.hooks.after_each) |hook| hook();
-
-        var t = try std.time.Timer.start();
-        switch (defn.defn) {
-            .simple => |func| func(self.allocator),
-            .parameterised => |x| x.func(@ptrCast(x.context), self.allocator),
-        }
-        return t.read();
-    }
-
-    /// Write the prettyPrint() header to a writer.
-    pub fn prettyPrintHeader(_: Benchmark, writer: anytype) !void {
-        try format.prettyPrintHeader(writer);
-    }
-
-    /// Get a copy of the system information, cpu type, cores, memory, etc.
-    pub fn getSystemInfo(_: Benchmark) !platform.OsInfo {
-        return try platform.getSystemInfo();
-    }
 };
+
+/// Write the prettyPrint() header to a writer.
+pub fn prettyPrintHeader(writer: anytype) !void {
+    try writer.print(
+        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        .{
+            "benchmark",
+            "runs",
+            "total time",
+            "time/run (avg ± σ)",
+            "(min ... max)",
+            "p75",
+            "p99",
+            "p995",
+        },
+    );
+    const dashes = "-------------------------";
+    try writer.print(dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ "\n", .{});
+}
+
+/// Get a copy of the system information, cpu type, cores, memory, etc.
+pub fn getSystemInfo() !platform.OsInfo {
+    return try platform.getSystemInfo();
+}
 
 /// Carries the results of a benchmark. The benchmark name and the recorded
 /// durations are available, and some basic statistics are automatically
@@ -277,91 +295,61 @@ pub const Result = struct {
     name: []const u8,
     timings_ns: []const u64,
 
-    // Statistics stored behind a pointer so Results can be cheap to pass by
-    // value.
-    statistics: *const Statistics,
-
-    const Statistics = struct {
-        total_ns: u64,
-        mean_ns: u64,
-        stddev_ns: u64,
-        min_ns: u64,
-        max_ns: u64,
-        percentiles: Percentiles,
-    };
-
-    const Percentiles = struct {
-        p75_ns: u64,
-        p99_ns: u64,
-        p995_ns: u64,
-    };
-
     pub fn init(
         allocator: std.mem.Allocator,
         name: []const u8,
-        timings_ns: []u64,
+        readings: Runner.Readings,
     ) !Result {
-        const len = timings_ns.len;
-        std.sort.heap(u64, timings_ns, {}, std.sort.asc(u64));
-
-        // Calculate total and mean runtime
-        var total_ns: u64 = 0;
-        for (timings_ns) |ns| total_ns += ns;
-        const mean_ns: u64 = if (0 < len) total_ns / len else 0;
-
-        // Calculate standard deviation
-        const stddev_ns: u64 = blk: {
-            var nvar: u64 = 0;
-            for (timings_ns) |ns| {
-                const sd = if (ns < mean_ns) mean_ns - ns else ns - mean_ns;
-                nvar += sd * sd;
-            }
-            break :blk if (1 < len) std.math.sqrt(nvar / (len - 1)) else 0;
-        };
-
-        const statistics: *Statistics = try allocator.create(Statistics);
-        statistics.* = Statistics{
-            .total_ns = total_ns,
-            .mean_ns = mean_ns,
-            .stddev_ns = stddev_ns,
-            .min_ns = if (len == 0) 0 else timings_ns[0],
-            .max_ns = if (len == 0) 0 else timings_ns[len - 1],
-            .percentiles = Percentiles{
-                .p75_ns = if (len == 0) 0 else timings_ns[len * 75 / 100],
-                .p99_ns = if (len == 0) 0 else timings_ns[len * 99 / 100],
-                .p995_ns = if (len == 0) 0 else timings_ns[len * 995 / 1000],
-            },
-        };
-
+        std.sort.heap(u64, readings.timings_ns, {}, std.sort.asc(u64));
         return Result{
             .allocator = allocator,
             .name = name,
-            .statistics = statistics,
-            .timings_ns = timings_ns,
+            .timings_ns = readings.timings_ns,
         };
     }
 
     pub fn deinit(self: Result) void {
         self.allocator.free(self.timings_ns);
-        self.allocator.destroy(self.statistics);
     }
 
     /// Formats and prints the benchmark result in a human readable format.
     /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
     /// colors: Whether to pretty-print with ANSI colors or not.
     pub fn prettyPrint(self: Result, writer: anytype, colors: bool) !void {
-        const s = self.statistics;
-        const p = s.percentiles;
-        try format.prettyPrintName(self.name, writer);
+        var buf: [128]u8 = undefined;
+
+        const s = Statistics(u64).init(self.timings_ns);
+        // Benchmark name, number of iterations, and total time
+        try writer.print("{s:<22} ", .{self.name});
         try setColor(colors, writer, Color.cyan);
-        try format.prettyPrintTotalOperations(self.timings_ns.len, writer);
-        try format.prettyPrintTotalTime(s.total_ns, writer);
+        try writer.print("{d:<8} {s:<15}", .{
+            self.timings_ns.len,
+            std.fmt.fmtDuration(s.total),
+        });
+        // Mean + standard deviation
         try setColor(colors, writer, Color.green);
-        try format.prettyPrintAvgStd(s.mean_ns, s.stddev_ns, writer);
+        try writer.print("{s:<23}", .{
+            try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
+                std.fmt.fmtDuration(s.mean),
+                std.fmt.fmtDuration(s.stddev),
+            }),
+        });
+        // Minimum and maximum
         try setColor(colors, writer, Color.blue);
-        try format.prettyPrintMinMax(s.min_ns, s.max_ns, writer);
+        try writer.print("{s:<29}", .{
+            try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
+                std.fmt.fmtDuration(s.min),
+                std.fmt.fmtDuration(s.max),
+            }),
+        });
+        // Percentiles
         try setColor(colors, writer, Color.cyan);
-        try format.prettyPrintPercentiles(p.p75_ns, p.p99_ns, p.p995_ns, writer);
+        try writer.print("{:<10} {:<10} {:<10}", .{
+            std.fmt.fmtDuration(s.percentiles.p75),
+            std.fmt.fmtDuration(s.percentiles.p99),
+            std.fmt.fmtDuration(s.percentiles.p995),
+        });
+        // End of line
         try setColor(colors, writer, Color.reset);
         try writer.writeAll("\n");
     }
@@ -371,105 +359,16 @@ pub const Result = struct {
     }
 
     pub fn writeJSON(self: Result, writer: anytype) !void {
-        const s = self.statistics;
-        const p = s.percentiles;
-        try std.fmt.format(
-            writer,
+        const timings_ns_stats = Statistics(u64).init(self.timings_ns);
+        try writer.print(
             \\{{ "name": "{s}",
-            \\   "units": "nanoseconds",
-            \\   "total": {d},
-            \\   "mean": {d},
-            \\   "stddev": {d},
-            \\   "min": {d},
-            \\   "max": {d},
-            \\   "percentiles": {{"p75": {d}, "p99": {d}, "p995": {d} }},
-            \\   "timings": [
+            \\   "timing_statistics": {}, "timings": {} }}
         ,
             .{
                 std.fmt.fmtSliceEscapeLower(self.name),
-                s.total_ns,
-                s.mean_ns,
-                s.stddev_ns,
-                s.min_ns,
-                s.max_ns,
-                p.p75_ns,
-                p.p99_ns,
-                p.p995_ns,
+                statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
+                format.fmtJSONArray(u64, self.timings_ns),
             },
         );
-        for (self.timings_ns, 0..) |ns, i| {
-            if (0 < i) try writer.writeAll(", ");
-            try std.fmt.format(writer, "{d}", .{ns});
-        }
-        try writer.writeAll("]}");
     }
 };
-
-test "Result" {
-    {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-        const r = try Result.init(std.testing.allocator, "r", try timings_ns.toOwnedSlice());
-        defer r.deinit();
-        try expectEq(@as(u64, 0), r.statistics.mean_ns);
-        try expectEq(@as(u64, 0), r.statistics.stddev_ns);
-    }
-
-    {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-        try timings_ns.append(1);
-        const r = try Result.init(std.testing.allocator, "r", try timings_ns.toOwnedSlice());
-        defer r.deinit();
-        try expectEq(@as(u64, 1), r.statistics.mean_ns);
-        try expectEq(@as(u64, 0), r.statistics.stddev_ns);
-    }
-
-    {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-        try timings_ns.append(1);
-        for (1..16) |i| try timings_ns.append(i);
-        const r = try Result.init(std.testing.allocator, "r", try timings_ns.toOwnedSlice());
-        defer r.deinit();
-        try expectEq(@as(u64, 7), r.statistics.mean_ns);
-        try expectEq(@as(u64, 4), r.statistics.stddev_ns);
-    }
-
-    {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-        try timings_ns.append(1);
-        for (1..101) |i| try timings_ns.append(i);
-        const r = try Result.init(std.testing.allocator, "r", try timings_ns.toOwnedSlice());
-        defer r.deinit();
-        try expectEq(@as(u64, 50), r.statistics.mean_ns);
-        try expectEq(@as(u64, 29), r.statistics.stddev_ns);
-    }
-
-    {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-        for (0..10) |_| try timings_ns.append(1);
-        const r = try Result.init(std.testing.allocator, "r", try timings_ns.toOwnedSlice());
-        defer r.deinit();
-        try expectEq(@as(u64, 1), r.statistics.mean_ns);
-        try expectEq(@as(u64, 0), r.statistics.stddev_ns);
-    }
-
-    {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-        for (0..100) |i| try timings_ns.append(i);
-        const r = try Result.init(std.testing.allocator, "r", try timings_ns.toOwnedSlice());
-        defer r.deinit();
-        try expectEq(@as(u64, 75), r.statistics.percentiles.p75_ns);
-        try expectEq(@as(u64, 99), r.statistics.percentiles.p99_ns);
-        try expectEq(@as(u64, 99), r.statistics.percentiles.p995_ns);
-    }
-
-    {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
-        for (0..100) |i| try timings_ns.append(i);
-        std.mem.reverse(u64, timings_ns.items);
-        const r = try Result.init(std.testing.allocator, "r", try timings_ns.toOwnedSlice());
-        defer r.deinit();
-        try expectEq(@as(u64, 75), r.statistics.percentiles.p75_ns);
-        try expectEq(@as(u64, 99), r.statistics.percentiles.p99_ns);
-        try expectEq(@as(u64, 99), r.statistics.percentiles.p995_ns);
-    }
-}

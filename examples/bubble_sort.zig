@@ -27,5 +27,6 @@ test "bench test bubbleSort" {
 
     try bench.add("Bubble Sort Benchmark", myBenchmark, .{});
 
+    try stdout.writeAll("\n");
     try bench.run(stdout);
 }
