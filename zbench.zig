@@ -86,8 +86,12 @@ const Definition = struct {
         }
         return Runner.Reading{
             .timing_ns = t.read(),
-            .max_allocated = if (self.config.track_allocations)
+            .allocation_max = if (self.config.track_allocations)
                 tracking.maxAllocated()
+            else
+                null,
+            .allocation_count = if (self.config.track_allocations)
+                tracking.allocationCount()
             else
                 null,
         };
@@ -297,7 +301,8 @@ pub const Result = struct {
     allocator: std.mem.Allocator,
     name: []const u8,
     timings_ns: []const u64,
-    max_allocations: ?[]const usize,
+    allocation_maxes: ?[]const usize,
+    allocation_counts: ?[]const usize,
 
     pub fn init(
         allocator: std.mem.Allocator,
@@ -305,19 +310,23 @@ pub const Result = struct {
         readings: Runner.Readings,
     ) !Result {
         std.sort.heap(u64, readings.timings_ns, {}, std.sort.asc(u64));
-        if (readings.max_allocations) |allocs|
-            std.sort.heap(usize, allocs, {}, std.sort.asc(usize));
+        if (readings.allocation_maxes) |arr|
+            std.sort.heap(usize, arr, {}, std.sort.asc(usize));
+        if (readings.allocation_counts) |arr|
+            std.sort.heap(usize, arr, {}, std.sort.asc(usize));
         return Result{
             .allocator = allocator,
             .name = name,
             .timings_ns = readings.timings_ns,
-            .max_allocations = readings.max_allocations,
+            .allocation_maxes = readings.allocation_maxes,
+            .allocation_counts = readings.allocation_counts,
         };
     }
 
     pub fn deinit(self: Result) void {
         self.allocator.free(self.timings_ns);
-        if (self.max_allocations) |allocs| self.allocator.free(allocs);
+        if (self.allocation_maxes) |arr| self.allocator.free(arr);
+        if (self.allocation_counts) |arr| self.allocator.free(arr);
     }
 
     /// Formats and prints the benchmark result in a human readable format.
@@ -361,7 +370,7 @@ pub const Result = struct {
         try setColor(colors, writer, Color.reset);
         try writer.writeAll("\n");
 
-        if (self.max_allocations) |allocs| {
+        if (self.allocation_maxes) |allocs| {
             const m = Statistics(usize).init(allocs);
             // Benchmark name
             const name = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{
@@ -403,8 +412,8 @@ pub const Result = struct {
 
     pub fn writeJSON(self: Result, writer: anytype) !void {
         const timings_ns_stats = Statistics(u64).init(self.timings_ns);
-        if (self.max_allocations) |allocs| {
-            const max_allocated_stats = Statistics(usize).init(allocs);
+        if (self.allocation_maxes) |allocs| {
+            const allocation_maxes_stats = Statistics(usize).init(allocs);
             try writer.print(
                 \\{{ "name": "{s}",
                 \\   "timing_statistics": {}, "timings": {},
@@ -414,7 +423,7 @@ pub const Result = struct {
                     std.fmt.fmtSliceEscapeLower(self.name),
                     statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
                     format.fmtJSONArray(u64, self.timings_ns),
-                    statistics.fmtJSON(usize, "bytes", max_allocated_stats),
+                    statistics.fmtJSON(usize, "bytes", allocation_maxes_stats),
                     format.fmtJSONArray(usize, allocs),
                 },
             );

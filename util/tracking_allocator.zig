@@ -6,6 +6,7 @@ const TrackingAllocator = @This();
 parent_allocator: Allocator,
 current_allocated: usize = 0,
 max_allocated: usize = 0,
+allocation_count: usize = 0,
 
 pub fn init(parent_allocator: Allocator) TrackingAllocator {
     return .{
@@ -28,6 +29,10 @@ pub fn maxAllocated(self: TrackingAllocator) usize {
     return self.max_allocated;
 }
 
+pub fn allocationCount(self: TrackingAllocator) usize {
+    return self.allocation_count;
+}
+
 fn alloc(
     ctx: *anyopaque,
     len: usize,
@@ -37,6 +42,7 @@ fn alloc(
     const self: *TrackingAllocator = @ptrCast(@alignCast(ctx));
     const result = self.parent_allocator.rawAlloc(len, log2_ptr_align, ra);
     if (result) |_| {
+        self.allocation_count += 1;
         self.current_allocated += len;
         if (self.max_allocated < self.current_allocated)
             self.max_allocated = self.current_allocated;
@@ -54,6 +60,7 @@ fn resize(
     const self: *TrackingAllocator = @ptrCast(@alignCast(ctx));
     const result = self.parent_allocator.rawResize(buf, log2_buf_align, new_len, ra);
     if (result) {
+        self.allocation_count += 1;
         if (buf.len < new_len) {
             self.current_allocated += new_len - buf.len;
             if (self.max_allocated < self.current_allocated)
