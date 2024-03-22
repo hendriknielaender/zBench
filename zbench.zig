@@ -13,6 +13,7 @@ const Optional = @import("./util/optional.zig").Optional;
 const optional = @import("./util/optional.zig").optional;
 const platform = @import("./util/platform.zig");
 const Runner = @import("./util/runner.zig");
+const TrackingAllocator = @import("./util/tracking_allocator.zig");
 
 /// Hooks containing optional hooks for lifecycle events in benchmarking.
 /// Each field in this struct is a nullable function pointer.
@@ -48,6 +49,10 @@ pub const Config = struct {
     /// This allows for custom setup and teardown operations, as well as fine-grained control
     /// over the environment in which benchmarks are run.
     hooks: Hooks = .{},
+
+    /// Track memory allocations made using the Allocator provided to
+    /// benchmarks.
+    track_allocations: bool = false,
 };
 
 /// A benchmark definition.
@@ -68,13 +73,27 @@ const Definition = struct {
         if (self.config.hooks.before_each) |hook| hook();
         defer if (self.config.hooks.after_each) |hook| hook();
 
+        var tracking = TrackingAllocator.init(allocator);
+        const alloc = if (self.config.track_allocations)
+            tracking.allocator()
+        else
+            allocator;
+
         var t = try std.time.Timer.start();
         switch (self.defn) {
-            .simple => |func| func(allocator),
-            .parameterised => |x| x.func(@ptrCast(x.context), allocator),
+            .simple => |func| func(alloc),
+            .parameterised => |x| x.func(@ptrCast(x.context), alloc),
         }
         return Runner.Reading{
             .timing_ns = t.read(),
+            .allocation_max = if (self.config.track_allocations)
+                tracking.maxAllocated()
+            else
+                null,
+            .allocation_count = if (self.config.track_allocations)
+                tracking.allocationCount()
+            else
+                null,
         };
     }
 };
@@ -184,6 +203,7 @@ pub const Benchmark = struct {
                     config.iterations,
                     config.max_iterations,
                     config.time_budget_ns,
+                    config.track_allocations,
                 );
                 break :blk &self.runner.?;
             };
@@ -294,6 +314,8 @@ pub const Result = struct {
     allocator: std.mem.Allocator,
     name: []const u8,
     timings_ns: []const u64,
+    allocation_maxes: ?[]const usize,
+    allocation_counts: ?[]const usize,
 
     pub fn init(
         allocator: std.mem.Allocator,
@@ -301,15 +323,23 @@ pub const Result = struct {
         readings: Runner.Readings,
     ) !Result {
         std.sort.heap(u64, readings.timings_ns, {}, std.sort.asc(u64));
+        if (readings.allocation_maxes) |arr|
+            std.sort.heap(usize, arr, {}, std.sort.asc(usize));
+        if (readings.allocation_counts) |arr|
+            std.sort.heap(usize, arr, {}, std.sort.asc(usize));
         return Result{
             .allocator = allocator,
             .name = name,
             .timings_ns = readings.timings_ns,
+            .allocation_maxes = readings.allocation_maxes,
+            .allocation_counts = readings.allocation_counts,
         };
     }
 
     pub fn deinit(self: Result) void {
         self.allocator.free(self.timings_ns);
+        if (self.allocation_maxes) |arr| self.allocator.free(arr);
+        if (self.allocation_counts) |arr| self.allocator.free(arr);
     }
 
     /// Formats and prints the benchmark result in a human readable format.
@@ -352,6 +382,41 @@ pub const Result = struct {
         // End of line
         try setColor(colors, writer, Color.reset);
         try writer.writeAll("\n");
+
+        if (self.allocation_maxes) |allocs| {
+            const m = Statistics(usize).init(allocs);
+            // Benchmark name
+            const name = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{
+                self.name,
+            });
+            try writer.print("{s:<46} ", .{name});
+            // Mean + standard deviation
+            try setColor(colors, writer, Color.green);
+            try writer.print("{s:<23}", .{
+                try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
+                    std.fmt.fmtIntSizeBin(m.mean),
+                    std.fmt.fmtIntSizeBin(m.stddev),
+                }),
+            });
+            // Minimum and maximum
+            try setColor(colors, writer, Color.blue);
+            try writer.print("{s:<29}", .{
+                try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
+                    std.fmt.fmtIntSizeBin(m.min),
+                    std.fmt.fmtIntSizeBin(m.max),
+                }),
+            });
+            // Percentiles
+            try setColor(colors, writer, Color.cyan);
+            try writer.print("{:<10} {:<10} {:<10}", .{
+                std.fmt.fmtIntSizeBin(m.percentiles.p75),
+                std.fmt.fmtIntSizeBin(m.percentiles.p99),
+                std.fmt.fmtIntSizeBin(m.percentiles.p995),
+            });
+            // End of line
+            try setColor(colors, writer, Color.reset);
+            try writer.writeAll("\n");
+        }
     }
 
     fn setColor(colors: bool, writer: anytype, color: Color) !void {
@@ -360,15 +425,32 @@ pub const Result = struct {
 
     pub fn writeJSON(self: Result, writer: anytype) !void {
         const timings_ns_stats = Statistics(u64).init(self.timings_ns);
-        try writer.print(
-            \\{{ "name": "{s}",
-            \\   "timing_statistics": {}, "timings": {} }}
-        ,
-            .{
-                std.fmt.fmtSliceEscapeLower(self.name),
-                statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                format.fmtJSONArray(u64, self.timings_ns),
-            },
-        );
+        if (self.allocation_maxes) |allocs| {
+            const allocation_maxes_stats = Statistics(usize).init(allocs);
+            try writer.print(
+                \\{{ "name": "{s}",
+                \\   "timing_statistics": {}, "timings": {},
+                \\   "max_allocation_statistics": {}, "max_allocations": {} }}
+            ,
+                .{
+                    std.fmt.fmtSliceEscapeLower(self.name),
+                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
+                    format.fmtJSONArray(u64, self.timings_ns),
+                    statistics.fmtJSON(usize, "bytes", allocation_maxes_stats),
+                    format.fmtJSONArray(usize, allocs),
+                },
+            );
+        } else {
+            try writer.print(
+                \\{{ "name": "{s}",
+                \\   "timing_statistics": {}, "timings": {} }}
+            ,
+                .{
+                    std.fmt.fmtSliceEscapeLower(self.name),
+                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
+                    format.fmtJSONArray(u64, self.timings_ns),
+                },
+            );
+        }
     }
 };
