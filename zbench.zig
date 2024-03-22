@@ -243,10 +243,10 @@ pub const Benchmark = struct {
 
     /// Run all benchmarks using an iterator, collecting progress information
     /// incrementally.
-    pub fn iterator(self: Benchmark) !Iterator {
+    pub fn iterator(self: *const Benchmark) !Iterator {
         return Iterator{
             .allocator = self.allocator,
-            .b = &self,
+            .b = self,
             .remaining = self.benchmarks.items,
             .runner = null,
         };
