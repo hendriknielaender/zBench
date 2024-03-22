@@ -186,31 +186,68 @@ test "Runner" {
     var r = try Runner.init(std.testing.allocator, 0, 16384, 2e9, false);
     {
         errdefer r.abort();
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
+
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(400_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(@as(?Step, null), try r.next(Reading.init(200_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
+        try expectEq(@as(?Step, null), try r.next(Reading.init(400_000_000, null)));
     }
     const result = try r.finish();
     defer std.testing.allocator.free(result.timings_ns);
     defer if (result.max_allocations) |m| std.testing.allocator.free(m);
     try expectEqSlices(u64, &.{
-        200_000_000, 200_000_000, 200_000_000, 200_000_000,
-        200_000_000, 200_000_000, 200_000_000, 200_000_000,
+        100_000_000, 200_000_000, 300_000_000, 400_000_000,
+        100_000_000, 200_000_000, 300_000_000, 400_000_000,
     }, result.timings_ns);
+}
+
+test "Runner - memory tracking" {
+    var r = try Runner.init(std.testing.allocator, 0, 16384, 2e9, true);
+    {
+        errdefer r.abort();
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 256)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 256)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 512)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 512)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 1024)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 1024)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 2048)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 2045)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 4096)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 4096)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 8192)));
+
+        try expectEq(Step.more, try r.next(Reading.init(100, 1)));
+        try expectEq(Step.more, try r.next(Reading.init(200, 2)));
+        try expectEq(Step.more, try r.next(Reading.init(300, 4)));
+        try expectEq(Step.more, try r.next(Reading.init(400, 8)));
+        try expectEq(Step.more, try r.next(Reading.init(100, 16)));
+        try expectEq(Step.more, try r.next(Reading.init(200, 32)));
+        try expectEq(Step.more, try r.next(Reading.init(300, 64)));
+        try expectEq(@as(?Step, null), try r.next(Reading.init(400, 128)));
+    }
+    const result = try r.finish();
+    defer std.testing.allocator.free(result.timings_ns);
+    defer if (result.max_allocations) |m| std.testing.allocator.free(m);
+    try expectEqSlices(u64, &.{
+        100, 200, 300, 400, 100, 200, 300, 400,
+    }, result.timings_ns);
+    try expectEqSlices(u64, &.{
+        1, 2, 4, 8, 16, 32, 64, 128,
+    }, result.max_allocations.?);
 }
