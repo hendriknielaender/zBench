@@ -287,6 +287,69 @@ pub fn getSystemInfo() !platform.OsInfo {
     return try platform.getSystemInfo();
 }
 
+/// A collection of the results of each benchmark. The results are available in
+/// the `results` array but they can be collectively pretty printed and
+/// deallocated with this structure.
+pub const Results = struct {
+    allocator: std.mem.Allocator,
+    results: []Result,
+
+    pub fn deinit(self: Results) void {
+        for (self.results) |r| r.deinit();
+        self.allocator.free(self.results);
+    }
+
+    /// Formats and prints the benchmark results in a human readable format.
+    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
+    /// colors: Whether to pretty-print with ANSI colors or not.
+    pub fn prettyPrint(self: Results, writer: anytype, colors: bool) !void {
+        try format.prettyPrintHeader(writer);
+        for (self.results) |r| try r.prettyPrint(writer, colors);
+    }
+
+    /// Prints a summary output at the end of benchmarking sessions
+    /// This summary highlights the fastest benchmark by name in green, and compares each
+    /// subsequent benchmark to show how many times slower they are relative to the fastest.
+    pub fn printSummary(self: Results, writer: anytype) !void {
+        if (self.results.len == 0) return;
+
+        // Find the fastest result without sorting
+        var fastest_index: usize = 0;
+        var fastest_time = self.results[0].statistics.mean_ns;
+        for (self.results, 0..) |res, i| {
+            if (res.statistics.mean_ns < fastest_time) {
+                fastest_time = res.statistics.mean_ns;
+                fastest_index = i;
+            }
+        }
+
+        // Print Summary Heading in Bold
+        try writer.print("\n \n{s}Summary{s}\n", .{ Color.bold.code(), Color.reset.code() });
+
+        try writer.print("{s}", .{Color.green.code()});
+        try writer.print("{s}", .{self.results[fastest_index].name});
+        try writer.print("{s} ran\n", .{Color.reset.code()});
+
+        for (self.results, 0..) |res, i| {
+            if (i == fastest_index) continue; // Skip the fastest since it's already printed
+            const times = @as(f64, @floatFromInt(res.statistics.mean_ns)) / @as(f64, @floatFromInt(fastest_time));
+
+            try writer.print(" └─ {s}{d:.2}x times{s} faster than {s}{s}\n", .{ Color.green.code(), times, Color.reset.code(), Color.blue.code(), res.name });
+            try writer.print("{s}", .{Color.reset.code()});
+        }
+    }
+
+    /// Prints the benchmark results in a machine readable JSON format.
+    pub fn writeJSON(self: Results, writer: anytype) !void {
+        try writer.writeAll("{\"benchmarks\": [\n");
+        for (self.results, 0..) |r, i| {
+            if (i != 0) try writer.writeAll(", ");
+            try r.writeJSON(writer);
+        }
+        try writer.writeAll("]}\n");
+    }
+};
+
 /// Carries the results of a benchmark. The benchmark name and the recorded
 /// durations are available, and some basic statistics are automatically
 /// calculated. The timings can always be assumed to be sorted.
