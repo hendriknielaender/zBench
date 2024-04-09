@@ -13,6 +13,9 @@ const Optional = @import("./util/optional.zig").Optional;
 const optional = @import("./util/optional.zig").optional;
 const platform = @import("./util/platform.zig");
 const Runner = @import("./util/runner.zig");
+const Readings = Runner.Readings;
+const AllocationReading = Runner.AllocationReading;
+const TrackingAllocator = @import("./util/tracking_allocator.zig");
 
 /// Hooks containing optional hooks for lifecycle events in benchmarking.
 /// Each field in this struct is a nullable function pointer.
@@ -48,6 +51,10 @@ pub const Config = struct {
     /// This allows for custom setup and teardown operations, as well as fine-grained control
     /// over the environment in which benchmarks are run.
     hooks: Hooks = .{},
+
+    /// Track memory allocations made using the Allocator provided to
+    /// benchmarks.
+    track_allocations: bool = false,
 };
 
 /// A benchmark definition.
@@ -65,6 +72,19 @@ const Definition = struct {
     /// Run and time a benchmark function once, as well as running before and
     /// after hooks.
     fn run(self: Definition, allocator: std.mem.Allocator) !Runner.Reading {
+        // Put the implementation into another function so we can put a
+        // tracking allocator on the stack if requested.
+        if (self.config.track_allocations) {
+            var tracking = TrackingAllocator.init(allocator);
+            return self.runImpl(tracking.allocator(), &tracking);
+        } else return self.runImpl(allocator, null);
+    }
+
+    fn runImpl(
+        self: Definition,
+        allocator: std.mem.Allocator,
+        tracking: ?*TrackingAllocator,
+    ) !Runner.Reading {
         if (self.config.hooks.before_each) |hook| hook();
         defer if (self.config.hooks.after_each) |hook| hook();
 
@@ -75,6 +95,10 @@ const Definition = struct {
         }
         return Runner.Reading{
             .timing_ns = t.read(),
+            .allocation = if (tracking) |trk| AllocationReading{
+                .max = trk.maxAllocated(),
+                .count = trk.allocationCount(),
+            } else null,
         };
     }
 };
@@ -184,6 +208,7 @@ pub const Benchmark = struct {
                     config.iterations,
                     config.max_iterations,
                     config.time_budget_ns,
+                    config.track_allocations,
                 );
                 break :blk &self.runner.?;
             };
@@ -293,23 +318,24 @@ pub fn getSystemInfo() !platform.OsInfo {
 pub const Result = struct {
     allocator: std.mem.Allocator,
     name: []const u8,
-    timings_ns: []const u64,
+    readings: Readings,
 
     pub fn init(
         allocator: std.mem.Allocator,
         name: []const u8,
         readings: Runner.Readings,
     ) !Result {
-        std.sort.heap(u64, readings.timings_ns, {}, std.sort.asc(u64));
-        return Result{
+        var r = Result{
             .allocator = allocator,
             .name = name,
-            .timings_ns = readings.timings_ns,
+            .readings = readings,
         };
+        r.readings.sort();
+        return r;
     }
 
     pub fn deinit(self: Result) void {
-        self.allocator.free(self.timings_ns);
+        self.readings.deinit();
     }
 
     /// Formats and prints the benchmark result in a human readable format.
@@ -318,12 +344,12 @@ pub const Result = struct {
     pub fn prettyPrint(self: Result, writer: anytype, colors: bool) !void {
         var buf: [128]u8 = undefined;
 
-        const s = Statistics(u64).init(self.timings_ns);
+        const s = Statistics(u64).init(self.readings.timings_ns);
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{self.name});
         try setColor(colors, writer, Color.cyan);
         try writer.print("{d:<8} {s:<15}", .{
-            self.timings_ns.len,
+            self.readings.iterations,
             std.fmt.fmtDuration(s.total),
         });
         // Mean + standard deviation
@@ -352,6 +378,41 @@ pub const Result = struct {
         // End of line
         try setColor(colors, writer, Color.reset);
         try writer.writeAll("\n");
+
+        if (self.readings.allocations) |allocs| {
+            const m = Statistics(usize).init(allocs.maxes);
+            // Benchmark name
+            const name = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{
+                self.name,
+            });
+            try writer.print("{s:<46} ", .{name});
+            // Mean + standard deviation
+            try setColor(colors, writer, Color.green);
+            try writer.print("{s:<23}", .{
+                try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
+                    std.fmt.fmtIntSizeBin(m.mean),
+                    std.fmt.fmtIntSizeBin(m.stddev),
+                }),
+            });
+            // Minimum and maximum
+            try setColor(colors, writer, Color.blue);
+            try writer.print("{s:<29}", .{
+                try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
+                    std.fmt.fmtIntSizeBin(m.min),
+                    std.fmt.fmtIntSizeBin(m.max),
+                }),
+            });
+            // Percentiles
+            try setColor(colors, writer, Color.cyan);
+            try writer.print("{:<10.3} {:<10.3} {:<10.3}", .{
+                std.fmt.fmtIntSizeBin(m.percentiles.p75),
+                std.fmt.fmtIntSizeBin(m.percentiles.p99),
+                std.fmt.fmtIntSizeBin(m.percentiles.p995),
+            });
+            // End of line
+            try setColor(colors, writer, Color.reset);
+            try writer.writeAll("\n");
+        }
     }
 
     fn setColor(colors: bool, writer: anytype, color: Color) !void {
@@ -359,16 +420,33 @@ pub const Result = struct {
     }
 
     pub fn writeJSON(self: Result, writer: anytype) !void {
-        const timings_ns_stats = Statistics(u64).init(self.timings_ns);
-        try writer.print(
-            \\{{ "name": "{s}",
-            \\   "timing_statistics": {}, "timings": {} }}
-        ,
-            .{
-                std.fmt.fmtSliceEscapeLower(self.name),
-                statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                format.fmtJSONArray(u64, self.timings_ns),
-            },
-        );
+        const timings_ns_stats = Statistics(u64).init(self.readings.timings_ns);
+        if (self.readings.allocations) |allocs| {
+            const allocation_maxes_stats = Statistics(usize).init(allocs.maxes);
+            try writer.print(
+                \\{{ "name": "{s}",
+                \\   "timing_statistics": {}, "timings": {},
+                \\   "max_allocation_statistics": {}, "max_allocations": {} }}
+            ,
+                .{
+                    std.fmt.fmtSliceEscapeLower(self.name),
+                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
+                    format.fmtJSONArray(u64, self.readings.timings_ns),
+                    statistics.fmtJSON(usize, "bytes", allocation_maxes_stats),
+                    format.fmtJSONArray(usize, allocs.maxes),
+                },
+            );
+        } else {
+            try writer.print(
+                \\{{ "name": "{s}",
+                \\   "timing_statistics": {}, "timings": {} }}
+            ,
+                .{
+                    std.fmt.fmtSliceEscapeLower(self.name),
+                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
+                    format.fmtJSONArray(u64, self.readings.timings_ns),
+                },
+            );
+        }
     }
 };
