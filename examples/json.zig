@@ -35,7 +35,7 @@ test "bench test json" {
             defer x.deinit();
             defer i += 1;
             if (0 < i) try stdout.writeAll(", ");
-            try x.writeJSON(stdout);
+            try x.writeJSON(test_allocator, stdout);
         },
     };
     try stdout.writeAll("]\n");
