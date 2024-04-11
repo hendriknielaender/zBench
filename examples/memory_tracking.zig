@@ -8,7 +8,7 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
     }
 }
 
-test "bench test basic" {
+test "bench test memory tracking" {
     const stdout = std.io.getStdOut().writer();
     var bench = zbench.Benchmark.init(std.testing.allocator, .{
         .iterations = 64,
