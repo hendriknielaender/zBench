@@ -234,7 +234,6 @@ pub const Benchmark = struct {
                 defer self.remaining = self.remaining[1..];
                 if (self.remaining[0].config.hooks.after_all) |hook| hook();
                 return Step{ .result = try Result.init(
-                    self.allocator,
                     self.remaining[0].name,
                     try runner.finish(),
                 ) };
@@ -267,6 +266,11 @@ pub const Benchmark = struct {
         const progress_node = progress.start("", 0);
         defer progress_node.end();
 
+        // Most allocations for pretty printing will be the same size each time,
+        // so using an arena should reduce the allocation load.
+        var arena = std.heap.ArenaAllocator.init(self.allocator);
+        defer arena.deinit();
+
         try prettyPrintHeader(writer);
         var iter = try self.iterator();
         while (try iter.next()) |step| switch (step) {
@@ -282,7 +286,8 @@ pub const Benchmark = struct {
                 progress_node.setEstimatedTotalItems(0);
                 progress_node.setCompletedItems(0);
                 progress.refresh();
-                try x.prettyPrint(writer, true);
+                try x.prettyPrint(arena.allocator(), writer, true);
+                _ = arena.reset(.retain_capacity);
             },
         };
     }
@@ -314,24 +319,13 @@ pub fn getSystemInfo() !platform.OsInfo {
 
 /// Carries the results of a benchmark. The benchmark name and the recorded
 /// durations are available, and some basic statistics are automatically
-/// calculated. The timings can always be assumed to be sorted.
+/// calculated.
 pub const Result = struct {
-    allocator: std.mem.Allocator,
     name: []const u8,
     readings: Readings,
 
-    pub fn init(
-        allocator: std.mem.Allocator,
-        name: []const u8,
-        readings: Runner.Readings,
-    ) !Result {
-        var r = Result{
-            .allocator = allocator,
-            .name = name,
-            .readings = readings,
-        };
-        r.readings.sort();
-        return r;
+    pub fn init(name: []const u8, readings: Runner.Readings) !Result {
+        return Result{ .name = name, .readings = readings };
     }
 
     pub fn deinit(self: Result) void {
@@ -341,10 +335,16 @@ pub const Result = struct {
     /// Formats and prints the benchmark result in a human readable format.
     /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
     /// colors: Whether to pretty-print with ANSI colors or not.
-    pub fn prettyPrint(self: Result, writer: anytype, colors: bool) !void {
+    pub fn prettyPrint(
+        self: Result,
+        allocator: std.mem.Allocator,
+        writer: anytype,
+        colors: bool,
+    ) !void {
         var buf: [128]u8 = undefined;
 
-        const s = Statistics(u64).init(self.readings.timings_ns);
+        const timings_ns = self.readings.timings_ns;
+        const s = try Statistics(u64).init(allocator, timings_ns);
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{self.name});
         try setColor(colors, writer, Color.cyan);
@@ -380,7 +380,7 @@ pub const Result = struct {
         try writer.writeAll("\n");
 
         if (self.readings.allocations) |allocs| {
-            const m = Statistics(usize).init(allocs.maxes);
+            const m = try Statistics(usize).init(allocator, allocs.maxes);
             // Benchmark name
             const name = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{
                 self.name,
@@ -419,10 +419,16 @@ pub const Result = struct {
         if (colors) try writer.writeAll(color.code());
     }
 
-    pub fn writeJSON(self: Result, writer: anytype) !void {
-        const timings_ns_stats = Statistics(u64).init(self.readings.timings_ns);
+    pub fn writeJSON(
+        self: Result,
+        allocator: std.mem.Allocator,
+        writer: anytype,
+    ) !void {
+        const timings_ns_stats =
+            try Statistics(u64).init(allocator, self.readings.timings_ns);
         if (self.readings.allocations) |allocs| {
-            const allocation_maxes_stats = Statistics(usize).init(allocs.maxes);
+            const allocation_maxes_stats =
+                try Statistics(usize).init(allocator, allocs.maxes);
             try writer.print(
                 \\{{ "name": "{s}",
                 \\   "timing_statistics": {}, "timings": {},

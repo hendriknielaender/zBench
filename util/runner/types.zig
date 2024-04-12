@@ -58,14 +58,6 @@ pub const Readings = struct {
             }
         }
     }
-
-    pub fn sort(self: *Readings) void {
-        std.sort.heap(u64, self.timings_ns, {}, std.sort.asc(u64));
-        if (self.allocations) |allocs| {
-            std.sort.heap(usize, allocs.maxes, {}, std.sort.asc(usize));
-            std.sort.heap(usize, allocs.counts, {}, std.sort.asc(usize));
-        }
-    }
 };
 
 pub const AllocationReading = struct {

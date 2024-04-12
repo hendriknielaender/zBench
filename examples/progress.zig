@@ -46,7 +46,7 @@ test "bench test progress" {
             progress_node.setEstimatedTotalItems(0);
             progress_node.setCompletedItems(0);
             progress.refresh();
-            try x.prettyPrint(stdout, true);
+            try x.prettyPrint(test_allocator, stdout, true);
         },
     };
 }
