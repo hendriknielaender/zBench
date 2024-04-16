@@ -55,6 +55,9 @@ pub const Config = struct {
     /// Track memory allocations made using the Allocator provided to
     /// benchmarks.
     track_allocations: bool = false,
+
+    /// Whether to display a summary of benchmark results comparing each to the fastest.
+    display_summary: bool = false, // Default to false, can be set to true when initializing
 };
 
 /// A benchmark definition.
@@ -233,10 +236,15 @@ pub const Benchmark = struct {
                 defer self.runner = null;
                 defer self.remaining = self.remaining[1..];
                 if (self.remaining[0].config.hooks.after_all) |hook| hook();
-                return Step{ .result = try Result.init(
-                    self.remaining[0].name,
-                    try runner.finish(),
-                ) };
+                const final_readings = try runner.finish();
+
+                // Compute total duration from the timings_ns array
+                var total_duration_ns: u64 = 0;
+                for (final_readings.timings_ns) |time_ns| {
+                    total_duration_ns += time_ns;
+                }
+
+                return Step{ .result = try Result.init(self.remaining[0].name, final_readings, total_duration_ns) };
             }
         }
 
@@ -266,6 +274,12 @@ pub const Benchmark = struct {
         const progress_node = progress.start("", 0);
         defer progress_node.end();
 
+        var fastest: u64 = std.math.maxInt(u64);
+        var fastest_name: []const u8 = "";
+
+        var results = std.ArrayList(Result).init(self.allocator);
+        defer results.deinit();
+
         // Most allocations for pretty printing will be the same size each time,
         // so using an arena should reduce the allocation load.
         var arena = std.heap.ArenaAllocator.init(self.allocator);
@@ -286,12 +300,53 @@ pub const Benchmark = struct {
                 progress_node.setEstimatedTotalItems(0);
                 progress_node.setCompletedItems(0);
                 progress.refresh();
+
+                // Sum the durations from the timings_ns array
+                var total_duration_ns: u64 = 0;
+                for (x.readings.timings_ns) |time_ns| {
+                    total_duration_ns += time_ns;
+                }
+
+                // Append the result with the total duration
+                const newResult = try Result.init(x.name, x.readings, total_duration_ns);
+                try results.append(newResult); // Append the successfully created Result
+
+                if (total_duration_ns < fastest) {
+                    fastest = total_duration_ns;
+                    fastest_name = x.name;
+                }
+
                 try x.prettyPrint(arena.allocator(), writer, true);
                 _ = arena.reset(.retain_capacity);
             },
         };
+
+        // Print summary
+        if (self.common_config.display_summary) {
+            try printSummary(writer, results.items, fastest, fastest_name);
+        }
     }
 };
+
+fn printSummary(writer: anytype, results: []const Result, fastest_ns: u64, fastest_name: []const u8) !void {
+    try writer.print("\x1b[1mSummary:\x1b[0m\n", .{});
+    try writer.print("{s} ran\n", .{fastest_name});
+
+    var last_index = results.len - 1;
+    for (results, 0..) |result, index| {
+        // Skip the fastest since it is being used as the baseline
+        if (std.mem.eql(u8, result.name, fastest_name)) continue;
+
+        const total_duration_f64 = @as(f64, @floatFromInt(result.total_duration_ns));
+        const fastest_duration_f64 = @as(f64, @floatFromInt(fastest_ns));
+
+        const times_slower = total_duration_f64 / fastest_duration_f64;
+
+        const connector_char = if (index == last_index) " └─" else " ├─";
+
+        try writer.print(" {s} {d:.2}x times faster than {s}\n", .{ connector_char, times_slower, result.name });
+    }
+}
 
 /// Write the prettyPrint() header to a writer.
 pub fn prettyPrintHeader(writer: anytype) !void {
@@ -323,9 +378,10 @@ pub fn getSystemInfo() !platform.OsInfo {
 pub const Result = struct {
     name: []const u8,
     readings: Readings,
+    total_duration_ns: u64,
 
-    pub fn init(name: []const u8, readings: Runner.Readings) !Result {
-        return Result{ .name = name, .readings = readings };
+    pub fn init(name: []const u8, readings: Runner.Readings, total_duration_ns: u64) !Result {
+        return Result{ .name = name, .readings = readings, .total_duration_ns = total_duration_ns };
     }
 
     pub fn deinit(self: Result) void {

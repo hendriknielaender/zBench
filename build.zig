@@ -66,6 +66,7 @@ fn setupExamples(b: *std.Build, target: std.zig.CrossTarget, optimize: std.built
         "memory_tracking",
         "parameterised",
         "progress",
+        "summary",
         "sleep",
         "systeminfo",
     };
