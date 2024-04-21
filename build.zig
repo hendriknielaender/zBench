@@ -1,7 +1,7 @@
 const std = @import("std");
 const log = std.log.scoped(.zbench_build);
 
-const version = std.SemanticVersion{ .major = 0, .minor = 1, .patch = 2 };
+const version = std.SemanticVersion{ .major = 0, .minor = 7, .patch = 1 };
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -36,8 +36,11 @@ fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
 
 fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const test_files = [_]struct { name: []const u8, path: []const u8 }{
-        .{ .name = "tests", .path = "tests.zig" },
-        .{ .name = "format_test", .path = "util/format_test.zig" },
+        .{ .name = "optional", .path = "util/optional.zig" },
+        .{ .name = "platform", .path = "util/platform.zig" },
+        .{ .name = "runner", .path = "util/runner.zig" },
+        .{ .name = "statistics", .path = "util/statistics.zig" },
+        .{ .name = "zbench", .path = "zbench.zig" },
     };
 
     const test_step = b.step("test", "Run library tests");
@@ -55,7 +58,17 @@ fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
 
 fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const example_step = b.step("test_examples", "Build examples");
-    const example_names = [_][]const u8{ "basic", "bubble_sort", "sleep" };
+    const example_names = [_][]const u8{
+        "basic",
+        "bubble_sort",
+        "hooks",
+        "json",
+        "memory_tracking",
+        "parameterised",
+        "progress",
+        "sleep",
+        "systeminfo",
+    };
 
     for (example_names) |example_name| {
         const example = b.addTest(.{
@@ -65,7 +78,9 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
-        const zbench_mod = b.addModule("zbench", .{ .root_source_file = .{ .path = "zbench.zig" } });
+        const zbench_mod = b.addModule("zbench", .{
+            .root_source_file = .{ .path = "zbench.zig" },
+        });
         example.root_module.addImport("zbench", zbench_mod);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);

@@ -1,29 +1,20 @@
 const std = @import("std");
 const zbench = @import("zbench");
-const test_allocator = std.testing.allocator;
 
-fn helloWorld() []const u8 {
-    var result: usize = 0;
-    var i: usize = 0;
-    while (i < 1000) : (i += 1) {
-        const square = i * i;
-        result += square;
+fn myBenchmark(allocator: std.mem.Allocator) void {
+    for (0..1000) |_| {
+        const buf = allocator.alloc(u8, 512) catch @panic("Out of memory");
+        defer allocator.free(buf);
     }
-
-    return "Hello, world!";
-}
-
-fn myBenchmark(_: *zbench.Benchmark) void {
-    _ = helloWorld();
 }
 
 test "bench test basic" {
-    const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator);
-    var benchmarkResults = zbench.BenchmarkResults{
-        .results = resultsAlloc,
-    };
-    defer benchmarkResults.results.deinit();
-    try zbench.run(myBenchmark, &bench, &benchmarkResults);
-    try benchmarkResults.prettyPrint();
+    const stdout = std.io.getStdOut().writer();
+    var bench = zbench.Benchmark.init(std.testing.allocator, .{});
+    defer bench.deinit();
+
+    try bench.add("My Benchmark", myBenchmark, .{});
+
+    try stdout.writeAll("\n");
+    try bench.run(stdout);
 }
