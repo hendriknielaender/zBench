@@ -132,7 +132,7 @@ pub const Config = struct {
 
 Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users.
 
-***Supported Version***: As of now, zBench is tested and supported on Zig version ***0.11.0***.
+***Supported Version***: As of now, zBench is tested and supported on Zig version ***0.12.0***.
 
 ### Benchmark Functions
 
