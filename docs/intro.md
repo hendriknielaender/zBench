@@ -11,4 +11,3 @@ Welcome to zBench, a streamlined benchmarking library for the Zig programming la
 ## Why zBench?
 
 zBench is built with the philosophy of simplicity and effectiveness. Whether you're a beginner in Zig or an experienced developer, zBench offers the tools to perform reliable and insightful performance evaluations of your code.
-

@@ -1,6 +1,6 @@
-## Advanced
+# Advanced
 
-### Note for Windows Users
+## Note for Windows Users
 
 If you encounter issues with character encoding, such as misrepresentation of "plusminus" (±) or "sigma" (σ) symbols in the benchmark results, it's likely due to Windows using UTF-16 LE encoding by default. To ensure characters are displayed correctly, you can switch your system to use UTF-8 encoding by following these steps:
 
