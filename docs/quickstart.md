@@ -35,5 +35,3 @@ test "bench test" {
     try zbench.run(myBenchmark, &bench, &benchmarkResults);
 }
 ```
-
-
