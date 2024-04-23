@@ -335,19 +335,21 @@ fn printSummary(writer: anytype, results: []const Result, fastest_ns: u64, faste
     try writer.print("\x1b[1mSummary:\x1b[0m\n", .{});
     try writer.print("{s} ran\n", .{fastest_name});
 
-    var last_index = results.len - 1;
-    for (results, 0..) |result, index| {
-        // Skip the fastest since it is being used as the baseline
-        if (std.mem.eql(u8, result.name, fastest_name)) continue;
+    var j: usize = 0; // Counter for non-fastest benchmarks.
+    for (results) |result| {
+        if (std.mem.eql(u8, result.name, fastest_name)) continue; // Skip the fastest.
 
+        // Compute how many times slower each benchmark is relative to the fastest.
         const total_duration_f64 = @as(f64, @floatFromInt(result.total_duration_ns));
         const fastest_duration_f64 = @as(f64, @floatFromInt(fastest_ns));
-
         const times_slower = total_duration_f64 / fastest_duration_f64;
 
-        const connector_char = if (index == last_index) " └─" else " ├─";
+        const is_last_non_fastest = (j == results.len - 2);
+        const connector_char = if (is_last_non_fastest) " └─" else " ├─";
 
-        try writer.print(" {s} {d:.2}x times faster than {s}\n", .{ connector_char, times_slower, result.name });
+        // Print the result comparison.
+        try writer.print("{s} {d:.2}x times faster than {s}\n", .{ connector_char, times_slower, result.name });
+        j += 1; // Increment only for non-fastest items.
     }
 }
 

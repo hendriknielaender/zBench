@@ -23,6 +23,13 @@ fn slowFunction(_: std.mem.Allocator) void {
         result += i * i;
     }
 }
+fn slowestFunction(_: std.mem.Allocator) void {
+    var result: usize = 0;
+    for (0..1_000_000) |i| {
+        std.mem.doNotOptimizeAway(i);
+        result += i * i;
+    }
+}
 
 test "empty bench test summary" {
     const stdout = std.io.getStdOut().writer();
@@ -62,6 +69,10 @@ test "bench test summary" {
     });
 
     try bench.add("slow function", slowFunction, .{
+        .iterations = 10,
+    });
+
+    try bench.add("slowest function", slowestFunction, .{
         .iterations = 10,
     });
 
