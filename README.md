@@ -42,7 +42,7 @@ zBench is a simple benchmarking library for the Zig programming language. It is 
            .target = target,
            .optimize = optimize,
        });
-   +   exe.addModule("zbench", zbench_module);
+   +   exe.root_module.addImport("zbench", zbench_module);
        exe.install();
 
        ...
