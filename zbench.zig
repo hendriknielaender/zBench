@@ -274,9 +274,6 @@ pub const Benchmark = struct {
         const progress_node = progress.start("", 0);
         defer progress_node.end();
 
-        var fastest: u64 = std.math.maxInt(u64);
-        var fastest_name: []const u8 = "";
-
         var results = std.ArrayList(Result).init(self.allocator);
         defer results.deinit();
 
@@ -311,11 +308,6 @@ pub const Benchmark = struct {
                 const newResult = try Result.init(x.name, x.readings, total_duration_ns);
                 try results.append(newResult); // Append the successfully created Result
 
-                if (total_duration_ns < fastest) {
-                    fastest = total_duration_ns;
-                    fastest_name = x.name;
-                }
-
                 try x.prettyPrint(arena.allocator(), writer, true);
                 _ = arena.reset(.retain_capacity);
             },
@@ -323,15 +315,33 @@ pub const Benchmark = struct {
 
         // Print summary
         if (self.common_config.display_summary) {
-            try printSummary(writer, results.items, fastest, fastest_name);
+            try printSummary(self, writer, results.items);
         }
     }
 };
 
 /// Prints a comparative summary of benchmark results if more than one benchmark exists.
-fn printSummary(writer: anytype, results: []const Result, fastest_ns: u64, fastest_name: []const u8) !void {
+fn printSummary(benchmark: Benchmark, writer: anytype, results: []const Result) !void {
     // Check if there is more than one benchmark
     if (results.len <= 1) return;
+
+    var fastest_ns: u64 = std.math.maxInt(u64);
+    var fastest_index: ?usize = null;
+
+    // Iterate through results to find the fastest.
+    for (results, 0..) |res, idx| {
+        if (res.total_duration_ns < fastest_ns) {
+            fastest_ns = res.total_duration_ns;
+            fastest_index = idx;
+        }
+    }
+
+    // Ensure fastest_index has been set before accessing the array
+    if (fastest_index == null) {
+        std.debug.panic("No valid fastest index found.", .{});
+    }
+
+    const fastest_name = benchmark.benchmarks.items[fastest_index.?].name;
 
     try writer.print("\x1b[1mSummary:\x1b[0m\n", .{});
     try writer.print("{s} ran\n", .{fastest_name});
