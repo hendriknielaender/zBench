@@ -24,6 +24,28 @@ fn slowFunction(_: std.mem.Allocator) void {
     }
 }
 
+test "empty bench test summary" {
+    const stdout = std.io.getStdOut().writer();
+    var bench = zbench.Benchmark.init(std.testing.allocator, .{ .display_summary = true });
+    defer bench.deinit();
+    // No benchmarks added
+
+    try stdout.writeAll("No Benchmarks Added:\n");
+    try bench.run(stdout);
+}
+
+test "single bench test summary" {
+    const stdout = std.io.getStdOut().writer();
+    var bench = zbench.Benchmark.init(std.testing.allocator, .{ .display_summary = true });
+    defer bench.deinit();
+
+    // Single benchmark
+    try bench.add("fast function", fastFunction, .{ .iterations = 10 });
+
+    try stdout.writeAll("Single Benchmark Added:\n");
+    try bench.run(stdout);
+}
+
 test "bench test summary" {
     const stdout = std.io.getStdOut().writer();
     var bench = zbench.Benchmark.init(std.testing.allocator, .{
@@ -31,11 +53,11 @@ test "bench test summary" {
     });
     defer bench.deinit();
 
-    try bench.add("fast function", fastFunction, .{
+    try bench.add("medium fast function", mediumFunction, .{
         .iterations = 10,
     });
 
-    try bench.add("medium fast function", mediumFunction, .{
+    try bench.add("fast function", fastFunction, .{
         .iterations = 10,
     });
 

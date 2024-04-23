@@ -329,6 +329,9 @@ pub const Benchmark = struct {
 };
 
 fn printSummary(writer: anytype, results: []const Result, fastest_ns: u64, fastest_name: []const u8) !void {
+    // Check if there is more than one benchmark
+    if (results.len <= 1) return;
+
     try writer.print("\x1b[1mSummary:\x1b[0m\n", .{});
     try writer.print("{s} ran\n", .{fastest_name});
 
