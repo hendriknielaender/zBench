@@ -328,6 +328,7 @@ pub const Benchmark = struct {
     }
 };
 
+/// Prints a comparative summary of benchmark results if more than one benchmark exists.
 fn printSummary(writer: anytype, results: []const Result, fastest_ns: u64, fastest_name: []const u8) !void {
     // Check if there is more than one benchmark
     if (results.len <= 1) return;
