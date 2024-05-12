@@ -21,7 +21,7 @@ const State = union(enum) {
 
         /// Maximum number of iterations the benchmark can run. This limit helps
         /// to avoid excessively long benchmark runs.
-        max_iterations: u16,
+        max_iterations: u32,
 
         /// Time budget for the benchmark in nanoseconds. This value is used to
         /// determine how long a single benchmark should be allowed to run
@@ -58,8 +58,8 @@ state: State,
 
 pub fn init(
     allocator: std.mem.Allocator,
-    iterations: u16,
-    max_iterations: u16,
+    iterations: u32,
+    max_iterations: u32,
     time_budget_ns: u64,
     track_allocations: bool,
 ) Error!Runner {

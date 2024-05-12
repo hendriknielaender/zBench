@@ -31,11 +31,11 @@ pub const Hooks = struct {
 pub const Config = struct {
     /// Number of iterations the benchmark has been run. Initialized to 0.
     /// If 0 then zBench will calculate an value.
-    iterations: u16 = 0,
+    iterations: u32 = 0,
 
     /// Maximum number of iterations the benchmark can run. Default is 16384.
     /// This limit helps to avoid excessively long benchmark runs.
-    max_iterations: u16 = 16384,
+    max_iterations: u32 = 16384,
 
     /// Time budget for the benchmark in nanoseconds. Default is 2e9 (2 seconds).
     /// This value is used to determine how long a single benchmark should be allowed to run
