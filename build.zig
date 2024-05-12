@@ -59,6 +59,7 @@ fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
 fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const example_step = b.step("test_examples", "Build examples");
     const example_names = [_][]const u8{
+        "baseline",
         "basic",
         "bubble_sort",
         "hooks",
