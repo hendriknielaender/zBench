@@ -11,10 +11,12 @@ pub const Reading = struct {
 
     pub fn init(
         timing_ns: u64,
+        baseline_ns: u64,
         allocation: ?AllocationReading,
     ) Reading {
         return .{
             .timing_ns = timing_ns,
+            .baseline_ns = baseline_ns,
             .allocation = allocation,
         };
     }
