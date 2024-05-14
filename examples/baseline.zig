@@ -10,17 +10,22 @@ test "benchmark timer baseline" {
     var bench = zbench.Benchmark.init(std.testing.allocator, .{});
     defer bench.deinit();
 
-    try bench.add("Benchmark baseline, n=10", noop, .{
+    try bench.add("Bench baseline, n=10 ", noop, .{
         .iterations = 10,
         .track_allocations = false,
     });
 
-    try bench.add("Benchmark baseline, n=10k", noop, .{
+    try bench.add("Bench baseline, n=1k ", noop, .{
+        .iterations = 1_000,
+        .track_allocations = false,
+    });
+
+    try bench.add("Bench baseline, n=10k", noop, .{
         .iterations = 10_000,
         .track_allocations = false,
     });
 
-    try bench.add("Benchmark baseline, n=10M", noop, .{
+    try bench.add("Bench baseline, n=10M", noop, .{
         .iterations = 10_000_000,
         .track_allocations = false,
     });

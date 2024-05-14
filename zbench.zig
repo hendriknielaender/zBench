@@ -55,6 +55,9 @@ pub const Config = struct {
     /// Track memory allocations made using the Allocator provided to
     /// benchmarks.
     track_allocations: bool = false,
+
+    /// experimental: subtract average runtime baseline from timing results
+    baseline_correction: bool = false,
 };
 
 /// A benchmark definition.
@@ -89,12 +92,17 @@ const Definition = struct {
         defer if (self.config.hooks.after_each) |hook| hook();
 
         var t = try std.time.Timer.start();
+        const baseline: u64 = t.read();
+        t.reset();
+
         switch (self.defn) {
             .simple => |func| func(allocator),
             .parameterised => |x| x.func(@ptrCast(x.context), allocator),
         }
+
         return Runner.Reading{
             .timing_ns = t.read(),
+            .baseline_ns = baseline,
             .allocation = if (tracking) |trk| AllocationReading{
                 .max = trk.maxAllocated(),
                 .count = trk.allocationCount(),
@@ -296,7 +304,7 @@ pub const Benchmark = struct {
 /// Write the prettyPrint() header to a writer.
 pub fn prettyPrintHeader(writer: anytype) !void {
     try writer.print(
-        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10} {s:<22}\n",
         .{
             "benchmark",
             "runs",
@@ -306,10 +314,11 @@ pub fn prettyPrintHeader(writer: anytype) !void {
             "p75",
             "p99",
             "p995",
+            "baseline",
         },
     );
     const dashes = "-------------------------";
-    try writer.print(dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ "\n", .{});
+    try writer.print(dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ "\n", .{});
 }
 
 /// Get a copy of the system information, cpu type, cores, memory, etc.
@@ -343,37 +352,46 @@ pub const Result = struct {
     ) !void {
         var buf: [128]u8 = undefined;
 
-        const timings_ns = self.readings.timings_ns;
-        const s = try Statistics(u64).init(allocator, timings_ns);
+        const stats_timings = try Statistics(u64).init(allocator, self.readings.timings_ns);
+        const stats_baseline = try Statistics(u64).init(allocator, self.readings.baseline_ns);
+
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{self.name});
         try setColor(colors, writer, Color.cyan);
         try writer.print("{d:<8} {s:<15}", .{
             self.readings.iterations,
-            std.fmt.fmtDuration(s.total),
+            std.fmt.fmtDuration(stats_timings.total),
         });
         // Mean + standard deviation
         try setColor(colors, writer, Color.green);
         try writer.print("{s:<23}", .{
             try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
-                std.fmt.fmtDuration(s.mean),
-                std.fmt.fmtDuration(s.stddev),
+                std.fmt.fmtDuration(stats_timings.mean),
+                std.fmt.fmtDuration(stats_timings.stddev),
             }),
         });
         // Minimum and maximum
         try setColor(colors, writer, Color.blue);
         try writer.print("{s:<29}", .{
             try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
-                std.fmt.fmtDuration(s.min),
-                std.fmt.fmtDuration(s.max),
+                std.fmt.fmtDuration(stats_timings.min),
+                std.fmt.fmtDuration(stats_timings.max),
             }),
         });
         // Percentiles
         try setColor(colors, writer, Color.cyan);
         try writer.print("{:<10} {:<10} {:<10}", .{
-            std.fmt.fmtDuration(s.percentiles.p75),
-            std.fmt.fmtDuration(s.percentiles.p99),
-            std.fmt.fmtDuration(s.percentiles.p995),
+            std.fmt.fmtDuration(stats_timings.percentiles.p75),
+            std.fmt.fmtDuration(stats_timings.percentiles.p99),
+            std.fmt.fmtDuration(stats_timings.percentiles.p995),
+        });
+        // Baseline
+        try setColor(colors, writer, Color.red);
+        try writer.print("{s:<23}", .{
+            try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
+                std.fmt.fmtDuration(stats_baseline.mean),
+                std.fmt.fmtDuration(stats_baseline.stddev),
+            }),
         });
         // End of line
         try setColor(colors, writer, Color.reset);

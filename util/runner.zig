@@ -139,6 +139,7 @@ pub fn finish(self: *Runner) Error!Readings {
             .allocator = self.allocator,
             .iterations = 0,
             .timings_ns = &.{},
+            .baseline_ns = &.{},
             .allocations = null,
         },
         .running => |st| st.readings,
