@@ -100,8 +100,13 @@ const Definition = struct {
             .parameterised => |x| x.func(@ptrCast(x.context), allocator),
         }
 
+        var lap = t.read();
+        if (self.config.baseline_correction) {
+            lap -|= baseline;
+        }
+
         return Runner.Reading{
-            .timing_ns = t.read(),
+            .timing_ns = lap,
             .baseline_ns = baseline,
             .allocation = if (tracking) |trk| AllocationReading{
                 .max = trk.maxAllocated(),
@@ -294,6 +299,7 @@ pub const Benchmark = struct {
                 progress_node.setEstimatedTotalItems(0);
                 progress_node.setCompletedItems(0);
                 progress.refresh();
+
                 try x.prettyPrint(arena.allocator(), writer, true);
                 _ = arena.reset(.retain_capacity);
             },

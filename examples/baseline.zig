@@ -12,22 +12,30 @@ test "benchmark timer baseline" {
 
     try bench.add("Bench baseline, n=10 ", noop, .{
         .iterations = 10,
-        .track_allocations = false,
+        .baseline_correction = false,
+    });
+    try bench.add("Bench baseline, n=10 ", noop, .{
+        .iterations = 10,
+        .baseline_correction = true,
     });
 
     try bench.add("Bench baseline, n=1k ", noop, .{
         .iterations = 1_000,
-        .track_allocations = false,
+        .baseline_correction = false,
+    });
+    try bench.add("Bench baseline, n=1k ", noop, .{
+        .iterations = 1_000,
+        .baseline_correction = true,
     });
 
     try bench.add("Bench baseline, n=10k", noop, .{
         .iterations = 10_000,
-        .track_allocations = false,
+        .baseline_correction = false,
     });
 
-    try bench.add("Bench baseline, n=10M", noop, .{
-        .iterations = 10_000_000,
-        .track_allocations = false,
+    try bench.add("Bench baseline, n=10k", noop, .{
+        .iterations = 10_000,
+        .baseline_correction = true,
     });
 
     try stdout.writeAll("\n");
