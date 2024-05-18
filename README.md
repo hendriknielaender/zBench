@@ -132,6 +132,7 @@ pub const Config = struct {
 - `max_iterations`: Set the maximum number of iterations for a benchmark. Useful for controlling long-running benchmarks.
 - `time_budget_ns`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
 - `hooks`: Set `before_all`, `after_all`, `before_each`, and `after_each` hooks to function pointers.
+- `baseline_correction`: enable/disable a baseline correction for the timing results (experimental, for Linux, MacOS). This can help to improve accuracy when benchmarking functions that have a very short execution time (nanosecond range).
 
 ### Compatibility Notes
 

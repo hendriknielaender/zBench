@@ -56,7 +56,8 @@ pub const Config = struct {
     /// benchmarks.
     track_allocations: bool = false,
 
-    /// experimental: subtract average runtime baseline from timing results
+    /// subtract runtime baseline from timing results (experimental; baseline means just reading
+    /// the timer without performing any operations in-between)
     baseline_correction: bool = false,
 };
 
