@@ -23,7 +23,7 @@ pub fn build(b: *std.Build) void {
 fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "zbench",
-        .root_source_file = .{ .path = "zbench.zig" },
+        .root_source_file = b.path("zbench.zig"),
         .target = target,
         .optimize = optimize,
         .version = version,
@@ -47,7 +47,7 @@ fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
     for (test_files) |test_file| {
         const _test = b.addTest(.{
             .name = test_file.name,
-            .root_source_file = .{ .path = test_file.path },
+            .root_source_file = b.path(test_file.path),
             .target = target,
             .optimize = optimize,
         });
@@ -74,13 +74,13 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
     for (example_names) |example_name| {
         const example = b.addTest(.{
             .name = example_name,
-            .root_source_file = .{ .path = b.fmt("examples/{s}.zig", .{example_name}) },
+            .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example_name})),
             .target = target,
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
         const zbench_mod = b.addModule("zbench", .{
-            .root_source_file = .{ .path = "zbench.zig" },
+            .root_source_file = b.path("zbench.zig"),
         });
         example.root_module.addImport("zbench", zbench_mod);
         example_step.dependOn(&example.step);
