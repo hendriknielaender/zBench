@@ -101,9 +101,7 @@ const Definition = struct {
         }
 
         var lap = t.read();
-        if (self.config.baseline_correction) {
-            lap -|= baseline;
-        }
+        if (self.config.baseline_correction) lap -|= baseline;
 
         return Runner.Reading{
             .timing_ns = lap,
@@ -358,8 +356,10 @@ pub const Result = struct {
     ) !void {
         var buf: [128]u8 = undefined;
 
-        const stats_timings = try Statistics(u64).init(allocator, self.readings.timings_ns);
-        const stats_baseline = try Statistics(u64).init(allocator, self.readings.baseline_ns);
+        const stats_timings =
+            try Statistics(u64).init(allocator, self.readings.timings_ns);
+        const stats_baseline =
+            try Statistics(u64).init(allocator, self.readings.baseline_ns);
 
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{self.name});
@@ -448,33 +448,34 @@ pub const Result = struct {
         allocator: std.mem.Allocator,
         writer: anytype,
     ) !void {
-        const timings_ns_stats =
+        const stats_timings =
             try Statistics(u64).init(allocator, self.readings.timings_ns);
+        const stats_baseline =
+            try Statistics(u64).init(allocator, self.readings.baseline_ns);
+
+        try writer.print(
+            \\{{ "name": "{s}",
+            \\   "timing_statistics": {}, 
+            \\   "timings": {},
+            \\   "baseline_statistics": {} }}
+        ,
+            .{
+                std.fmt.fmtSliceEscapeLower(self.name),
+                statistics.fmtJSON(u64, "nanoseconds", stats_timings),
+                format.fmtJSONArray(u64, self.readings.timings_ns),
+                statistics.fmtJSON(u64, "nanoseconds", stats_baseline),
+            },
+        );
         if (self.readings.allocations) |allocs| {
             const allocation_maxes_stats =
                 try Statistics(usize).init(allocator, allocs.maxes);
             try writer.print(
-                \\{{ "name": "{s}",
-                \\   "timing_statistics": {}, "timings": {},
-                \\   "max_allocation_statistics": {}, "max_allocations": {} }}
+                \\,
+                \\{{ "max_allocation_statistics": {}, "max_allocations": {} }}
             ,
                 .{
-                    std.fmt.fmtSliceEscapeLower(self.name),
-                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                    format.fmtJSONArray(u64, self.readings.timings_ns),
                     statistics.fmtJSON(usize, "bytes", allocation_maxes_stats),
                     format.fmtJSONArray(usize, allocs.maxes),
-                },
-            );
-        } else {
-            try writer.print(
-                \\{{ "name": "{s}",
-                \\   "timing_statistics": {}, "timings": {} }}
-            ,
-                .{
-                    std.fmt.fmtSliceEscapeLower(self.name),
-                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                    format.fmtJSONArray(u64, self.readings.timings_ns),
                 },
             );
         }
