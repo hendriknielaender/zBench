@@ -309,7 +309,7 @@ pub const Benchmark = struct {
 /// Write the prettyPrint() header to a writer.
 pub fn prettyPrintHeader(writer: anytype) !void {
     try writer.print(
-        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10} {s:<22}\n",
+        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<9} {s:<22}\n",
         .{
             "benchmark",
             "runs",
@@ -393,7 +393,7 @@ pub const Result = struct {
             std.fmt.fmtDuration(stats_timings.percentiles.p995),
         });
         // Baseline
-        try setColor(colors, writer, Color.red);
+        try setColor(colors, writer, Color.magenta_bright);
         try writer.print("{s:<23}", .{
             try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
                 std.fmt.fmtDuration(stats_baseline.mean),
