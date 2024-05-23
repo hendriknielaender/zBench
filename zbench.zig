@@ -93,8 +93,7 @@ const Definition = struct {
         defer if (self.config.hooks.after_each) |hook| hook();
 
         var t = try std.time.Timer.start();
-        const baseline: u64 = t.read();
-        t.reset();
+        const baseline: u64 = t.lap(); // baseline lap; timer gets automatically resetted
 
         switch (self.defn) {
             .simple => |func| func(allocator),
