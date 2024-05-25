@@ -39,7 +39,7 @@ Using `zig fetch` simplifies managing dependencies by automatically handling the
 
        const exe = b.addExecutable(.{
            .name = "test",
-           .root_source_file = .{ .path = "src/main.zig" },
+           .root_source_file = b.path("src/main.zig"),
            .target = target,
            .optimize = optimize,
        });
