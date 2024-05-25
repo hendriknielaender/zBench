@@ -94,3 +94,10 @@ Now you can import like this:
 ```zig
 const zbench = @import("zbench");
 ```
+
+## Further Reading
+
+For more information on the Zig build system and useful tricks, check out these resources:
+
+- [Zig Build System](https://ziglang.org/learn/build-system/)
+- [Build System Tricks](https://ziggit.dev/t/build-system-tricks/)
