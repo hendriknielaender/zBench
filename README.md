@@ -125,6 +125,7 @@ pub const Config = struct {
     max_iterations: u16 = 16384,
     time_budget_ns: u64 = 2e9, // 2 seconds
     hooks: Hooks = .{},
+    track_allocations: bool = false, 
 };
 ```
 
@@ -132,6 +133,7 @@ pub const Config = struct {
 - `max_iterations`: Set the maximum number of iterations for a benchmark. Useful for controlling long-running benchmarks.
 - `time_budget_ns`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
 - `hooks`: Set `before_all`, `after_all`, `before_each`, and `after_each` hooks to function pointers.
+- `track_allocations`: Boolean to enable or disable tracking memory allocations during the benchmark.
 
 ### Compatibility Notes
 
