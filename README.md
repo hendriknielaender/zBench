@@ -7,92 +7,22 @@
 
 zBench is a simple benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
 
-## Install Option 1 (build.zig.zon)
+## Content 
+  * [Installation](docs/install.md)
+  * [Usage](#usage)
+  * [Configuration](#configuration)
+    + [Compatibility Notes](#compatibility-notes)
+    + [Benchmark Functions](#benchmark-functions)
+    + [Reporting Benchmarks](#reporting-benchmarks)
+    + [Running zBench Examples](#running-zbench-examples)
+    + [Troubleshooting](#troubleshooting)
+  * [Contributing](#contributing)
+    + [Contributing Guide](#contributing-guide)
+    + [License](#license)
 
-1. Declare zBench as a dependency in `build.zig.zon`:
+## Installation
 
-   ```diff
-   .{
-       .name = "my-project",
-       .version = "1.0.0",
-       .paths = .{""},
-       .dependencies = .{
-   +       .zbench = .{
-   +           .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
-   +       },
-       },
-   }
-   ```
-
-2. Add the module in `build.zig`:
-
-   ```diff
-   const std = @import("std");
-
-   pub fn build(b: *std.Build) void {
-       const target = b.standardTargetOptions(.{});
-       const optimize = b.standardOptimizeOption(.{});
-
-   +   const opts = .{ .target = target, .optimize = optimize };
-   +   const zbench_module = b.dependency("zbench", opts).module("zbench");
-
-       const exe = b.addExecutable(.{
-           .name = "test",
-           .root_source_file = .{ .path = "src/main.zig" },
-           .target = target,
-           .optimize = optimize,
-       });
-   +   exe.root_module.addImport("zbench", zbench_module);
-       exe.install();
-
-       ...
-   }
-   ```
-
-3. Get the package hash:
-
-   ```shell
-   $ zig build
-   my-project/build.zig.zon:6:20: error: url field is missing corresponding hash field
-           .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
-                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   note: expected .hash = "<HASH>",
-   ```
-
-4. Update `build.zig.zon` package hash value:
-
-   ```diff
-   .{
-       .name = "my-project",
-       .version = "1.0.0",
-       .paths = .{""},
-       .dependencies = .{
-           .zbench = .{
-               .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
-   +           .hash = "<HASH>",
-           },
-       },
-   }
-   ```
-
-## Install Option 2 (git submodule)
-
-On your project root directory make a directory name libs.
-
-- Run `git submodule add https://github.com/hendriknielaender/zBench libs/zbench`
-- Then add the module into your `build.zig`
-
-```zig
-exe.addAnonymousModule("zbench", .{
-    .source_file = .{ .path = "libs/zbench/zbench.zig" },
-});
-```
-
-Now you can import like this:
-
-```zig
-const zbench = @import("zbench");
-```
+For installation instructions, please refer to the [documentation](docs/install.md).
 
 ## Usage
 
