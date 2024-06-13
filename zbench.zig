@@ -31,11 +31,11 @@ pub const Hooks = struct {
 pub const Config = struct {
     /// Number of iterations the benchmark has been run. Initialized to 0.
     /// If 0 then zBench will calculate an value.
-    iterations: u16 = 0,
+    iterations: u32 = 0,
 
     /// Maximum number of iterations the benchmark can run. Default is 16384.
     /// This limit helps to avoid excessively long benchmark runs.
-    max_iterations: u16 = 16384,
+    max_iterations: u32 = 16384,
 
     /// Time budget for the benchmark in nanoseconds. Default is 2e9 (2 seconds).
     /// This value is used to determine how long a single benchmark should be allowed to run
@@ -55,6 +55,10 @@ pub const Config = struct {
     /// Track memory allocations made using the Allocator provided to
     /// benchmarks.
     track_allocations: bool = false,
+
+    /// subtract runtime baseline from timing results (experimental; baseline means just reading
+    /// the timer without performing any operations in-between)
+    baseline_correction: bool = false,
 };
 
 /// A benchmark definition.
@@ -89,12 +93,19 @@ const Definition = struct {
         defer if (self.config.hooks.after_each) |hook| hook();
 
         var t = try std.time.Timer.start();
+        const baseline: u64 = t.lap(); // baseline lap; timer gets automatically resetted
+
         switch (self.defn) {
             .simple => |func| func(allocator),
             .parameterised => |x| x.func(@ptrCast(x.context), allocator),
         }
+
+        var lap = t.read();
+        if (self.config.baseline_correction) lap -|= baseline;
+
         return Runner.Reading{
-            .timing_ns = t.read(),
+            .timing_ns = lap,
+            .baseline_ns = baseline,
             .allocation = if (tracking) |trk| AllocationReading{
                 .max = trk.maxAllocated(),
                 .count = trk.allocationCount(),
@@ -286,6 +297,7 @@ pub const Benchmark = struct {
                 progress_node.setEstimatedTotalItems(0);
                 progress_node.setCompletedItems(0);
                 progress.refresh();
+
                 try x.prettyPrint(arena.allocator(), writer, true);
                 _ = arena.reset(.retain_capacity);
             },
@@ -296,7 +308,7 @@ pub const Benchmark = struct {
 /// Write the prettyPrint() header to a writer.
 pub fn prettyPrintHeader(writer: anytype) !void {
     try writer.print(
-        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        "{s:<22} {s:<8} {s:<14} {s:<22} {s:<28} {s:<10} {s:<10} {s:<9} {s:<22}\n",
         .{
             "benchmark",
             "runs",
@@ -306,10 +318,11 @@ pub fn prettyPrintHeader(writer: anytype) !void {
             "p75",
             "p99",
             "p995",
+            "baseline",
         },
     );
     const dashes = "-------------------------";
-    try writer.print(dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ "\n", .{});
+    try writer.print(dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ "\n", .{});
 }
 
 /// Get a copy of the system information, cpu type, cores, memory, etc.
@@ -343,37 +356,48 @@ pub const Result = struct {
     ) !void {
         var buf: [128]u8 = undefined;
 
-        const timings_ns = self.readings.timings_ns;
-        const s = try Statistics(u64).init(allocator, timings_ns);
+        const stats_timings =
+            try Statistics(u64).init(allocator, self.readings.timings_ns);
+        const stats_baseline =
+            try Statistics(u64).init(allocator, self.readings.baseline_ns);
+
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{self.name});
         try setColor(colors, writer, Color.cyan);
         try writer.print("{d:<8} {s:<15}", .{
             self.readings.iterations,
-            std.fmt.fmtDuration(s.total),
+            std.fmt.fmtDuration(stats_timings.total),
         });
         // Mean + standard deviation
         try setColor(colors, writer, Color.green);
         try writer.print("{s:<23}", .{
             try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
-                std.fmt.fmtDuration(s.mean),
-                std.fmt.fmtDuration(s.stddev),
+                std.fmt.fmtDuration(stats_timings.mean),
+                std.fmt.fmtDuration(stats_timings.stddev),
             }),
         });
         // Minimum and maximum
         try setColor(colors, writer, Color.blue);
         try writer.print("{s:<29}", .{
             try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
-                std.fmt.fmtDuration(s.min),
-                std.fmt.fmtDuration(s.max),
+                std.fmt.fmtDuration(stats_timings.min),
+                std.fmt.fmtDuration(stats_timings.max),
             }),
         });
         // Percentiles
         try setColor(colors, writer, Color.cyan);
         try writer.print("{:<10} {:<10} {:<10}", .{
-            std.fmt.fmtDuration(s.percentiles.p75),
-            std.fmt.fmtDuration(s.percentiles.p99),
-            std.fmt.fmtDuration(s.percentiles.p995),
+            std.fmt.fmtDuration(stats_timings.percentiles.p75),
+            std.fmt.fmtDuration(stats_timings.percentiles.p99),
+            std.fmt.fmtDuration(stats_timings.percentiles.p995),
+        });
+        // Baseline
+        try setColor(colors, writer, Color.magenta_bright);
+        try writer.print("{s:<23}", .{
+            try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
+                std.fmt.fmtDuration(stats_baseline.mean),
+                std.fmt.fmtDuration(stats_baseline.stddev),
+            }),
         });
         // End of line
         try setColor(colors, writer, Color.reset);
@@ -424,33 +448,34 @@ pub const Result = struct {
         allocator: std.mem.Allocator,
         writer: anytype,
     ) !void {
-        const timings_ns_stats =
+        const stats_timings =
             try Statistics(u64).init(allocator, self.readings.timings_ns);
+        const stats_baseline =
+            try Statistics(u64).init(allocator, self.readings.baseline_ns);
+
+        try writer.print(
+            \\{{ "name": "{s}",
+            \\   "timing_statistics": {}, 
+            \\   "timings": {},
+            \\   "baseline_statistics": {} }}
+        ,
+            .{
+                std.fmt.fmtSliceEscapeLower(self.name),
+                statistics.fmtJSON(u64, "nanoseconds", stats_timings),
+                format.fmtJSONArray(u64, self.readings.timings_ns),
+                statistics.fmtJSON(u64, "nanoseconds", stats_baseline),
+            },
+        );
         if (self.readings.allocations) |allocs| {
             const allocation_maxes_stats =
                 try Statistics(usize).init(allocator, allocs.maxes);
             try writer.print(
-                \\{{ "name": "{s}",
-                \\   "timing_statistics": {}, "timings": {},
-                \\   "max_allocation_statistics": {}, "max_allocations": {} }}
+                \\,
+                \\{{ "max_allocation_statistics": {}, "max_allocations": {} }}
             ,
                 .{
-                    std.fmt.fmtSliceEscapeLower(self.name),
-                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                    format.fmtJSONArray(u64, self.readings.timings_ns),
                     statistics.fmtJSON(usize, "bytes", allocation_maxes_stats),
                     format.fmtJSONArray(usize, allocs.maxes),
-                },
-            );
-        } else {
-            try writer.print(
-                \\{{ "name": "{s}",
-                \\   "timing_statistics": {}, "timings": {} }}
-            ,
-                .{
-                    std.fmt.fmtSliceEscapeLower(self.name),
-                    statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                    format.fmtJSONArray(u64, self.readings.timings_ns),
                 },
             );
         }

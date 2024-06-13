@@ -54,7 +54,7 @@ pub const Config = struct {
     max_iterations: u16 = 16384,
     time_budget_ns: u64 = 2e9, // 2 seconds
     hooks: Hooks = .{},
-    track_allocations: bool = false, 
+    track_allocations: bool = false,
 };
 ```
 

@@ -21,7 +21,7 @@ const State = union(enum) {
 
         /// Maximum number of iterations the benchmark can run. This limit helps
         /// to avoid excessively long benchmark runs.
-        max_iterations: u16,
+        max_iterations: u32,
 
         /// Time budget for the benchmark in nanoseconds. This value is used to
         /// determine how long a single benchmark should be allowed to run
@@ -58,8 +58,8 @@ state: State,
 
 pub fn init(
     allocator: std.mem.Allocator,
-    iterations: u16,
-    max_iterations: u16,
+    iterations: u32,
+    max_iterations: u32,
     time_budget_ns: u64,
     track_allocations: bool,
 ) Error!Runner {
@@ -139,6 +139,7 @@ pub fn finish(self: *Runner) Error!Readings {
             .allocator = self.allocator,
             .iterations = 0,
             .timings_ns = &.{},
+            .baseline_ns = &.{},
             .allocations = null,
         },
         .running => |st| st.readings,
@@ -175,26 +176,26 @@ test "Runner" {
     var r = try Runner.init(std.testing.allocator, 0, 16384, 2e9, false);
     {
         errdefer r.abort();
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, null)));
 
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(400_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
-        try expectEq(@as(?Step, null), try r.next(Reading.init(400_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(400_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, null)));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, null)));
+        try expectEq(@as(?Step, null), try r.next(Reading.init(400_000_000, 0, null)));
     }
     const result = try r.finish();
     defer result.deinit();
@@ -208,26 +209,26 @@ test "Runner - memory tracking" {
     var r = try Runner.init(std.testing.allocator, 0, 16384, 2e9, true);
     {
         errdefer r.abort();
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, .{ .max = 256, .count = 1 })));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, .{ .max = 256, .count = 1 })));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, .{ .max = 512, .count = 2 })));
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, .{ .max = 512, .count = 2 })));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, .{ .max = 1024, .count = 4 })));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, .{ .max = 1024, .count = 4 })));
-        try expectEq(Step.more, try r.next(Reading.init(100_000_000, .{ .max = 2048, .count = 8 })));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, .{ .max = 2045, .count = 8 })));
-        try expectEq(Step.more, try r.next(Reading.init(300_000_000, .{ .max = 4096, .count = 16 })));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, .{ .max = 4096, .count = 16 })));
-        try expectEq(Step.more, try r.next(Reading.init(200_000_000, .{ .max = 8192, .count = 32 })));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, .{ .max = 256, .count = 1 })));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, .{ .max = 256, .count = 1 })));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, .{ .max = 512, .count = 2 })));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, .{ .max = 512, .count = 2 })));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, .{ .max = 1024, .count = 4 })));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, .{ .max = 1024, .count = 4 })));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, 0, .{ .max = 2048, .count = 8 })));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, .{ .max = 2045, .count = 8 })));
+        try expectEq(Step.more, try r.next(Reading.init(300_000_000, 0, .{ .max = 4096, .count = 16 })));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, .{ .max = 4096, .count = 16 })));
+        try expectEq(Step.more, try r.next(Reading.init(200_000_000, 0, .{ .max = 8192, .count = 32 })));
 
-        try expectEq(Step.more, try r.next(Reading.init(100, .{ .max = 1, .count = 2 })));
-        try expectEq(Step.more, try r.next(Reading.init(200, .{ .max = 2, .count = 4 })));
-        try expectEq(Step.more, try r.next(Reading.init(300, .{ .max = 4, .count = 8 })));
-        try expectEq(Step.more, try r.next(Reading.init(400, .{ .max = 8, .count = 16 })));
-        try expectEq(Step.more, try r.next(Reading.init(100, .{ .max = 16, .count = 32 })));
-        try expectEq(Step.more, try r.next(Reading.init(200, .{ .max = 32, .count = 64 })));
-        try expectEq(Step.more, try r.next(Reading.init(300, .{ .max = 64, .count = 128 })));
-        try expectEq(@as(?Step, null), try r.next(Reading.init(400, .{ .max = 128, .count = 256 })));
+        try expectEq(Step.more, try r.next(Reading.init(100, 0, .{ .max = 1, .count = 2 })));
+        try expectEq(Step.more, try r.next(Reading.init(200, 0, .{ .max = 2, .count = 4 })));
+        try expectEq(Step.more, try r.next(Reading.init(300, 0, .{ .max = 4, .count = 8 })));
+        try expectEq(Step.more, try r.next(Reading.init(400, 0, .{ .max = 8, .count = 16 })));
+        try expectEq(Step.more, try r.next(Reading.init(100, 0, .{ .max = 16, .count = 32 })));
+        try expectEq(Step.more, try r.next(Reading.init(200, 0, .{ .max = 32, .count = 64 })));
+        try expectEq(Step.more, try r.next(Reading.init(300, 0, .{ .max = 64, .count = 128 })));
+        try expectEq(@as(?Step, null), try r.next(Reading.init(400, 0, .{ .max = 128, .count = 256 })));
     }
     const result = try r.finish();
     defer result.deinit();

@@ -6,14 +6,17 @@ pub const Step = enum { more };
 
 pub const Reading = struct {
     timing_ns: u64,
+    baseline_ns: u64,
     allocation: ?AllocationReading,
 
     pub fn init(
         timing_ns: u64,
+        baseline_ns: u64,
         allocation: ?AllocationReading,
     ) Reading {
         return .{
             .timing_ns = timing_ns,
+            .baseline_ns = baseline_ns,
             .allocation = allocation,
         };
     }
@@ -23,6 +26,7 @@ pub const Readings = struct {
     allocator: std.mem.Allocator,
     iterations: usize,
     timings_ns: []u64,
+    baseline_ns: []u64,
     allocations: ?AllocationReadings,
 
     pub fn init(
@@ -34,6 +38,7 @@ pub const Readings = struct {
             .allocator = allocator,
             .iterations = n,
             .timings_ns = try allocator.alloc(u64, n),
+            .baseline_ns = try allocator.alloc(u64, n),
             .allocations = if (track_allocations)
                 try AllocationReadings.init(allocator, n)
             else
@@ -43,11 +48,13 @@ pub const Readings = struct {
 
     pub fn deinit(self: Readings) void {
         self.allocator.free(self.timings_ns);
+        self.allocator.free(self.baseline_ns);
         if (self.allocations) |allocs| allocs.deinit(self.allocator);
     }
 
     pub fn set(self: *Readings, i: usize, reading: Reading) void {
         self.timings_ns[i] = reading.timing_ns;
+        self.baseline_ns[i] = reading.baseline_ns;
         if (self.allocations) |allocs| {
             if (reading.allocation) |x| {
                 allocs.maxes[i] = x.max;

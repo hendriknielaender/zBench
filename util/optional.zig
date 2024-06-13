@@ -37,4 +37,10 @@ test "Optional" {
     const b: Foo = optional(Foo, .{ .abc = 6 }, a);
     try std.testing.expectEqual(@as(u8, 6), b.abc);
     try std.testing.expectEqual(@as(u8, 10), b.xyz);
+
+    const Bar = struct { flag_a: bool, flag_b: bool };
+    const c: Bar = Bar{ .flag_a = false, .flag_b = true };
+    const d: Bar = optional(Bar, .{ .flag_a = true, .flag_b = true }, c);
+    try std.testing.expect(d.flag_a);
+    try std.testing.expect(d.flag_b);
 }
