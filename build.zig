@@ -66,6 +66,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         "memory_tracking",
         "parameterised",
         "progress",
+        "summary",
         "sleep",
         "systeminfo",
     };
