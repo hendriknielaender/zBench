@@ -11,5 +11,6 @@ test "bench test sleepy" {
     var bench = zbench.Benchmark.init(test_allocator, .{});
     defer bench.deinit();
     try bench.add("Sleep Benchmark", sleepBenchmark, .{});
+    try stdout.writeAll("\n");
     try bench.run(stdout);
 }
