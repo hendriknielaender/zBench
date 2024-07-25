@@ -345,8 +345,9 @@ pub const Result = struct {
 
         const timings_ns = self.readings.timings_ns;
         const s = try Statistics(u64).init(allocator, timings_ns);
+        const truncated_name = self.name[0..@min(22, self.name.len)];
         // Benchmark name, number of iterations, and total time
-        try writer.print("{s:<22} ", .{self.name});
+        try writer.print("{s:<22} ", .{truncated_name});
         try setColor(colors, writer, Color.cyan);
         try writer.print("{d:<8} {s:<15}", .{
             self.readings.iterations,
@@ -383,7 +384,7 @@ pub const Result = struct {
             const m = try Statistics(usize).init(allocator, allocs.maxes);
             // Benchmark name
             const name = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{
-                self.name,
+                truncated_name,
             });
             try writer.print("{s:<46} ", .{name});
             // Mean + standard deviation
