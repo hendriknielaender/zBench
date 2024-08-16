@@ -70,6 +70,8 @@ Zig is in active development and the APIs can change frequently, making it chall
 
 **_Supported Version_**: As of now, zBench is tested and supported on Zig version **_0.12.0_**.
 
+**_Performance Note:_** It's important to acknowledge that a no-op time of 15 ns (or more) is expected and is not an issue with zBench itself. This is a normal occurrence and does not reflect any inefficiency in the benchmarking process.
+
 ### Benchmark Functions
 
 Benchmark functions have the following signature:
