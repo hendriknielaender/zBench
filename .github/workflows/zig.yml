@@ -19,10 +19,7 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v2
         with:
           version: 0.13.0
-      - run: zig build test -Dtarget="aarch64-macos"
-        if: matrix.os == 'macos-latest'
       - run: zig build test
-        if: matrix.os != 'macos-latest'
   build-examples:
     strategy:
       matrix:
