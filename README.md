@@ -68,7 +68,7 @@ pub const Config = struct {
 
 Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users.
 
-**_Supported Version_**: As of now, zBench is tested and supported on Zig version **_0.12.0_**.
+**_Supported Version_**: As of now, zBench is tested and supported on Zig version **_0.13.0_**.
 
 **_Performance Note:_** It's important to acknowledge that a no-op time of 15 ns (or more) is expected and is not an issue with zBench itself. This is a normal occurrence and does not reflect any inefficiency in the benchmarking process.
 

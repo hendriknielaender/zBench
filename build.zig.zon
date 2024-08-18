@@ -1,0 +1,13 @@
+.{
+    .name = "zbench",
+    .version = "0.8.1",
+    .paths = .{
+        "zbench.zig",
+        "util", // anything from ./util
+        // examples not listed / excluded
+        "README.md",
+        "LICENSE",
+        "build.zig",
+        "build.zig.zon",
+    },
+}

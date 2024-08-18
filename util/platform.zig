@@ -50,7 +50,7 @@ pub fn getSystemInfo() !OsInfo {
 }
 
 fn getCpuName() ![]const u8 {
-    var scratch: [4096]u8 = undefined;
+    var scratch: [8192]u8 = undefined;
     var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     const cpu = switch (builtin.os.tag) {
         .linux => try lnx.getCpuName(fbs.allocator()),
@@ -64,7 +64,7 @@ fn getCpuName() ![]const u8 {
 }
 
 fn getCpuCores() !u32 {
-    var scratch: [4096]u8 = undefined;
+    var scratch: [8192]u8 = undefined;
     var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     return switch (builtin.os.tag) {
         .linux => try lnx.getCpuCores(fbs.allocator()),
@@ -75,7 +75,7 @@ fn getCpuCores() !u32 {
 }
 
 fn getTotalMemory() !u64 {
-    var scratch: [4096]u8 = undefined;
+    var scratch: [8192]u8 = undefined;
     var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     return switch (builtin.os.tag) {
         .linux => try lnx.getTotalMemory(fbs.allocator()),
