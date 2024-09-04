@@ -61,6 +61,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
     const example_names = [_][]const u8{
         "basic",
         "bubble_sort",
+        "bubble_sort_hooks",
         "hooks",
         "json",
         "memory_tracking",
