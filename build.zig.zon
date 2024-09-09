@@ -1,6 +1,6 @@
 .{
     .name = "zbench",
-    .version = "0.9.0",
+    .version = "0.9.1",
     .paths = .{
         "zbench.zig",
         "util", // anything from ./util
