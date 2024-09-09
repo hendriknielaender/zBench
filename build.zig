@@ -57,7 +57,7 @@ fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
 }
 
 fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
-    const example_step = b.step("test_examples", "Build examples");
+    const example_step = b.step("examples", "Build examples");
     const example_names = [_][]const u8{
         "basic",
         "bubble_sort",
@@ -72,7 +72,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
     };
 
     for (example_names) |example_name| {
-        const example = b.addTest(.{
+        const example = b.addExecutable(.{
             .name = example_name,
             .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = b.fmt("examples/{s}.zig", .{example_name}) } },
             .target = target,

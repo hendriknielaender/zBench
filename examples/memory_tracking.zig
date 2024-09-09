@@ -1,5 +1,6 @@
 const std = @import("std");
 const zbench = @import("zbench");
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 fn myBenchmark(allocator: std.mem.Allocator) void {
     for (0..2000) |_| {
@@ -8,12 +9,16 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
     }
 }
 
-test "bench test memory tracking" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(std.testing.allocator, .{
+    var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 64,
     });
-    defer bench.deinit();
+    defer {
+        bench.deinit();
+        const deinit_status = gpa.deinit();
+        if (deinit_status == .leak) std.debug.panic("Memory leak detected", .{});
+    }
 
     try bench.add("My Benchmark 1", myBenchmark, .{});
     try bench.add("My Benchmark 2", myBenchmark, .{

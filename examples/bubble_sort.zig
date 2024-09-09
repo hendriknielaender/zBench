@@ -1,7 +1,6 @@
 const std = @import("std");
 const inc = @import("include");
 const zbench = @import("zbench");
-const test_allocator = std.testing.allocator;
 
 fn bubbleSort(nums: []i32) void {
     var i: usize = nums.len - 1;
@@ -20,9 +19,9 @@ fn myBenchmark(_: std.mem.Allocator) void {
     _ = bubbleSort(&numbers);
 }
 
-test "bench test bubbleSort" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(test_allocator, .{});
+    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
     try bench.add("Bubble Sort Benchmark", myBenchmark, .{});

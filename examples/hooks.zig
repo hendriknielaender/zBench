@@ -17,9 +17,9 @@ fn myBenchmark(_: std.mem.Allocator) void {
     }
 }
 
-test "bench test hooks" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(std.testing.allocator, .{});
+    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
     try bench.add("My Benchmark", myBenchmark, .{

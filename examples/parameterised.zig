@@ -1,6 +1,5 @@
 const std = @import("std");
 const zbench = @import("zbench");
-const test_allocator = std.testing.allocator;
 
 const MyBenchmark = struct {
     loops: usize,
@@ -18,9 +17,9 @@ const MyBenchmark = struct {
     }
 };
 
-test "bench test parameterised" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(test_allocator, .{});
+    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
     try bench.addParam("My Benchmark 1", &MyBenchmark.init(100_000), .{});
