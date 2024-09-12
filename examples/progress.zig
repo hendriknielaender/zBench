@@ -1,6 +1,5 @@
 const std = @import("std");
 const zbench = @import("zbench");
-const test_allocator = std.testing.allocator;
 
 fn myBenchmark1(_: std.mem.Allocator) void {
     var result: usize = 0;
@@ -18,9 +17,10 @@ fn myBenchmark2(_: std.mem.Allocator) void {
     }
 }
 
-test "bench test progress" {
+pub fn main() !void {
+    const allocator = std.heap.page_allocator;
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(test_allocator, .{});
+    var bench = zbench.Benchmark.init(allocator, .{});
     defer bench.deinit();
 
     try bench.add("My Benchmark 1", myBenchmark1, .{});
@@ -33,7 +33,7 @@ test "bench test progress" {
         .progress => |_| {},
         .result => |x| {
             defer x.deinit();
-            try x.prettyPrint(test_allocator, stdout, true);
+            try x.prettyPrint(allocator, stdout, true);
         },
     };
 }

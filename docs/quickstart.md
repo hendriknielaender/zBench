@@ -25,9 +25,9 @@ fn benchmarkMyFunction(_: *zbench.Benchmark) void {
 Run the benchmark in a test:
 
 ```zig
-test "bench test" {
+pub fn main() !void {
     const resultsAlloc = std.ArrayList(zbench.BenchmarkResult).init(test_allocator);
-    var bench = try zbench.Benchmark.init("My Benchmark", test_allocator);
+    var bench = try zbench.Benchmark.init("My Benchmark", std.heap.page_allocator);
     var benchmarkResults = zbench.BenchmarkResults{
         .results = resultsAlloc,
     };

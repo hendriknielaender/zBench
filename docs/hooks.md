@@ -24,9 +24,9 @@ zBench provides two ways to register hooks: globally or for a given benchmark.
 Global registration adds hooks to each added benchmark.
 
 ```zig
-test "bench test hooks" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(std.testing.allocator, .{ .hooks = .{
+    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{ .hooks = .{
         .before_all = beforeAllHook,
         .after_all = afterAllHook,
     } });
@@ -47,9 +47,9 @@ In this example, both Benchmark 1 and Benchmark 2 will execute `beforeAllHook` a
 Hooks can also be included with the `add` and `addParam` methods. 
 
 ```zig
-test "bench test hooks" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(std.testing.allocator, .{});
+    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
     try bench.add("Benchmark 1", myBenchmark, .{

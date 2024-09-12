@@ -100,7 +100,7 @@ The minimum and maximum execution times were 100 ms and 2000 ms, respectively. T
 You can run all example tests with the following command:
 
 ```shell
-zig build test_examples
+zig build examples
 ```
 
 ### Troubleshooting

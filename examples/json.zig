@@ -1,6 +1,6 @@
 const std = @import("std");
 const zbench = @import("zbench");
-const test_allocator = std.testing.allocator;
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 fn myBenchmark(alloc: std.mem.Allocator) void {
     var result: usize = 0;
@@ -12,10 +12,15 @@ fn myBenchmark(alloc: std.mem.Allocator) void {
     }
 }
 
-test "bench test json" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
-    var bench = zbench.Benchmark.init(test_allocator, .{});
-    defer bench.deinit();
+
+    var bench = zbench.Benchmark.init(gpa.allocator(), .{});
+    defer {
+        bench.deinit();
+        const deinit_status = gpa.deinit();
+        if (deinit_status == .leak) std.debug.panic("Memory leak detected", .{});
+    }
 
     try bench.add("My Benchmark 1", myBenchmark, .{
         .iterations = 10,
@@ -35,7 +40,7 @@ test "bench test json" {
             defer x.deinit();
             defer i += 1;
             if (0 < i) try stdout.writeAll(", ");
-            try x.writeJSON(test_allocator, stdout);
+            try x.writeJSON(gpa.allocator(), stdout);
         },
     };
     try stdout.writeAll("]\n");

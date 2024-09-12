@@ -10,14 +10,14 @@ const inc = @import("include");
 const zbench = @import("zbench");
 
 // Global variables modified/accessed by the hooks.
-const test_allocator = std.testing.allocator;
+var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 const array_size: usize = 100;
 // BenchmarkData contains the data generation logic.
 var benchmark_data: BenchmarkData = undefined;
 
 // Hooks do not accept any parameters and cannot return anything.
 fn beforeAll() void {
-    benchmark_data.init(test_allocator, array_size) catch unreachable;
+    benchmark_data.init(gpa.allocator(), array_size) catch unreachable;
 }
 
 fn beforeEach() void {
@@ -48,11 +48,15 @@ fn afterAll() void {
     benchmark_data.deinit();
 }
 
-test "bench test bubbleSort with hooks" {
+pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
 
-    var bench = zbench.Benchmark.init(test_allocator, .{});
-    defer bench.deinit();
+    var bench = zbench.Benchmark.init(gpa.allocator(), .{});
+    defer {
+        bench.deinit();
+        const deinit_status = gpa.deinit();
+        if (deinit_status == .leak) std.debug.panic("Memory leak detected", .{});
+    }
 
     try bench.add("Bubble Sort Benchmark", myBenchmark, .{
         .track_allocations = true, // Option used to show that hooks are not included in the tracking.
