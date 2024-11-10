@@ -26,7 +26,7 @@ For installation instructions, please refer to the [documentation](docs/install.
 
 ## Usage
 
-Create a new benchmark function in your Zig code. This function should take a single argument of type `std.mem.Allocator`. The function would run the code you wish to benchmark.
+Create a new benchmark function in your Zig code. This function takes a single argument of type `std.mem.Allocator` and runs the code you wish to benchmark.
 
 ```zig
 fn benchmarkMyFunction(allocator: std.mem.Allocator) void {
@@ -67,21 +67,13 @@ pub const Config = struct {
 
 ### Compatibility Notes
 
-Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users.
+#### Zig version
 
-**_Supported Version_**: As of now, zBench is tested and supported on Zig version **_0.13.0_**.
+Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users. As of now, zBench is tested and supported on Zig version **_0.13.0_**.
 
-**_Performance Note:_** It's important to acknowledge that a no-op time of ca. 15 ns (or more) is expected and is not an issue with zBench itself (see also [#77](https://github.com/hendriknielaender/zBench/issues/77)). This does not reflect an inefficiency in the benchmarking process.
+#### Performance Note
 
-### Benchmark Functions
-
-Benchmark functions have the following signature:
-
-```zig
-fn(allocator: std.mem.Allocator) void
-```
-
-The function body contains the code you wish to benchmark.
+It's important to acknowledge that a no-op time of ca. 15 ns (or more) is expected and is not an issue with zBench itself (see also [#77](https://github.com/hendriknielaender/zBench/issues/77)). This does not reflect an inefficiency in the benchmarking process.
 
 ### Reporting Benchmarks
 
