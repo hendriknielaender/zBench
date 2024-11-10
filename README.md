@@ -7,17 +7,18 @@
 
 zBench is a benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
 
-## Content 
-  * [Installation](docs/install.md)
-  * [Usage](#usage)
-  * [Configuration](#configuration)
-    + [Compatibility Notes](#compatibility-notes)
-    + [Benchmark Functions](#benchmark-functions)
-    + [Reporting Benchmarks](#reporting-benchmarks)
-    + [Running zBench Examples](#running-zbench-examples)
-    + [Troubleshooting](#troubleshooting)
-  * [Contributing](#contributing)
-  * [License](#license)
+## Content
+
+* [Installation](docs/install.md)
+* [Usage](#usage)
+* [Configuration](#configuration)
+  * [Compatibility Notes](#compatibility-notes)
+  * [Benchmark Functions](#benchmark-functions)
+  * [Reporting Benchmarks](#reporting-benchmarks)
+  * [Running zBench Examples](#running-zbench-examples)
+  * [Troubleshooting](#troubleshooting)
+* [Contributing](#contributing)
+* [License](#license)
 
 ## Installation
 
@@ -25,7 +26,7 @@ For installation instructions, please refer to the [documentation](docs/install.
 
 ## Usage
 
-Create a new benchmark function in your Zig code. This function should take a single argument of type `std.mem.Allocator`. The function would run the code you wish to benchmark.
+Create a new benchmark function in your Zig code. This function takes a single argument of type `std.mem.Allocator` and runs the code you wish to benchmark.
 
 ```zig
 fn benchmarkMyFunction(allocator: std.mem.Allocator) void {
@@ -58,29 +59,21 @@ pub const Config = struct {
 };
 ```
 
-- `iterations`: The number of iterations the benchmark has been run. This field is usually managed by zBench itself.
-- `max_iterations`: Set the maximum number of iterations for a benchmark. Useful for controlling long-running benchmarks.
-- `time_budget_ns`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
-- `hooks`: Set `before_all`, `after_all`, `before_each`, and `after_each` hooks to function pointers.
-- `track_allocations`: Boolean to enable or disable tracking memory allocations during the benchmark.
+* `iterations`: The number of iterations the benchmark has been run. This field is usually managed by zBench itself.
+* `max_iterations`: Set the maximum number of iterations for a benchmark. Useful for controlling long-running benchmarks.
+* `time_budget_ns`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
+* `hooks`: Set `before_all`, `after_all`, `before_each`, and `after_each` hooks to function pointers.
+* `track_allocations`: Boolean to enable or disable tracking memory allocations during the benchmark.
 
 ### Compatibility Notes
 
-Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users.
+#### Zig version
 
-**_Supported Version_**: As of now, zBench is tested and supported on Zig version **_0.13.0_**.
+Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users. As of now, zBench is tested and supported on Zig version **_0.13.0_**.
 
-**_Performance Note:_** It's important to acknowledge that a no-op time of 15 ns (or more) is expected and is not an issue with zBench itself. This is a normal occurrence and does not reflect any inefficiency in the benchmarking process.
+#### Performance Note
 
-### Benchmark Functions
-
-Benchmark functions have the following signature:
-
-```zig
-fn(allocator: std.mem.Allocator) void
-```
-
-The function body contains the code you wish to benchmark.
+It's important to acknowledge that a no-op time of ca. 15 ns (or more) is expected and is not an issue with zBench itself (see also [#77](https://github.com/hendriknielaender/zBench/issues/77)). This does not reflect an inefficiency in the benchmarking process.
 
 ### Reporting Benchmarks
 
@@ -97,16 +90,18 @@ The minimum and maximum execution times were 100 ms and 2000 ms, respectively. T
 
 ### Running zBench Examples
 
-You can run all example tests with the following command:
+You can build all examples with the following command:
 
 ```shell
 zig build examples
 ```
 
+Executables can then be found in `./zig-out/bin` by default.
+
 ### Troubleshooting
 
-- If Zig doesn't detect changes in a dependency, clear the project's `zig-cache` folder and `~/.cache/zig`.
-- [Non-ASCII characters not printed correctly on Windows](docs/advanced.md)
+* If Zig doesn't detect changes in a dependency, clear the project's `zig-cache` folder and `~/.cache/zig`.
+* [Non-ASCII characters not printed correctly on Windows](docs/advanced.md)
 
 ## Contributing
 
