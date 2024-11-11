@@ -84,8 +84,8 @@ On your project root directory make a directory name libs.
 - Then add the module into your `build.zig`
 
 ```zig
-exe.addAnonymousModule("zbench", .{
-    .source_file = .{ .path = "libs/zbench/zbench.zig" },
+exe.root_module.addAnonymousImport("zbench", .{
+    .root_source_file = b.path("libs/zbench/zbench.zig"),
 });
 ```
 
