@@ -13,7 +13,6 @@ zBench is a benchmarking library for the Zig programming language. It is designe
 * [Usage](#usage)
 * [Configuration](#configuration)
   * [Compatibility Notes](#compatibility-notes)
-  * [Benchmark Functions](#benchmark-functions)
   * [Reporting Benchmarks](#reporting-benchmarks)
   * [Running zBench Examples](#running-zbench-examples)
   * [Troubleshooting](#troubleshooting)
