@@ -149,7 +149,7 @@ pub const Benchmark = struct {
     ) !void {
         // Check the benchmark parameter is the proper type.
         const T: type = switch (@typeInfo(@TypeOf(benchmark))) {
-            .Pointer => |ptr| if (ptr.is_const) ptr.child else @compileError(
+            .pointer => |ptr| if (ptr.is_const) ptr.child else @compileError(
                 "benchmark must be a const ptr to a struct with a 'run' method",
             ),
             else => @compileError(
