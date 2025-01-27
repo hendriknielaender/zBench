@@ -11,7 +11,7 @@ pub fn Optional(comptime T: type) type {
     for (T_info.fields, &fields) |fi, *fo| {
         fo.* = fi;
         fo.*.type = ?fi.type;
-        fo.*.default_value = &@as(?fi.type, null);
+        fo.*.default_value_ptr = &@as(?fi.type, null);
     }
     var result = T_info;
     result.fields = &fields;
