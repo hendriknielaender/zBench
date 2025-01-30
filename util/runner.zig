@@ -58,8 +58,8 @@ state: State,
 
 pub fn init(
     allocator: std.mem.Allocator,
-    iterations: u16,
-    max_iterations: u16,
+    iterations: u32,
+    max_iterations: u32,
     time_budget_ns: u64,
     track_allocations: bool,
 ) Error!Runner {
