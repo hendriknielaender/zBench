@@ -11,6 +11,8 @@ pub const Readings = @import("./runner/types.zig").Readings;
 
 const Runner = @This();
 
+pub const MAX_N_ITER = 100_000;
+
 const State = union(enum) {
     preparing: Preparing,
     running: Running,
@@ -86,14 +88,13 @@ pub fn init(
 }
 
 pub fn next(self: *Runner, reading: Reading) Error!?Step {
-    const MAX_N = 65536;
     switch (self.state) {
         .preparing => |*st| {
             if (st.elapsed_ns < st.time_budget_ns and st.iteration_loops < st.max_iterations) {
                 st.elapsed_ns += reading.timing_ns;
                 if (st.iterations_remaining == 0) {
                     // double N for next iteration
-                    st.N = @min(st.N * 2, MAX_N);
+                    st.N = @min(st.N * 2, MAX_N_ITER);
                     st.iterations_remaining = st.N - 1;
                     st.iteration_loops += 1;
                 } else {
@@ -103,10 +104,10 @@ pub fn next(self: *Runner, reading: Reading) Error!?Step {
                 // Safety first: make sure the recorded durations aren't all-zero
                 if (st.elapsed_ns == 0) st.elapsed_ns = 1;
                 // Adjust N based on the actual duration achieved
-                var N: usize = @intCast((st.N * st.time_budget_ns) / st.elapsed_ns);
+                var N: usize = @intCast((st.N * st.time_budget_ns) / st.elapsed_ns + 1);
                 // check that N doesn't go out of bounds
                 if (N == 0) N = 1;
-                if (N > MAX_N) N = MAX_N;
+                if (N > MAX_N_ITER) N = MAX_N_ITER;
                 // Now run the benchmark with the adjusted N value
                 self.state = .{ .running = .{
                     .iterations_count = N,
