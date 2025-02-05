@@ -93,7 +93,7 @@ pub fn next(self: *Runner, reading: Reading) Error!?Step {
         .preparing => |*st| {
             st.elapsed_ns += reading.timing_ns;
             st.iteration_loops += 1;
-            if (st.elapsed_ns <= st.time_budget_ns and st.iteration_loops < st.max_iterations) {
+            if (st.elapsed_ns < st.time_budget_ns and st.iteration_loops < st.max_iterations) {
                 if (st.iterations_remaining == 0) {
                     // double N for next iteration or use max_iterations
                     st.N = @min(st.N * 2, DEFAULT_MAX_N_ITER);
@@ -105,7 +105,8 @@ pub fn next(self: *Runner, reading: Reading) Error!?Step {
                 // Safety first: make sure the recorded durations aren't all-zero
                 if (st.elapsed_ns == 0) st.elapsed_ns = 1;
                 // Adjust N based on the actual duration achieved
-                var N: usize = st.N;
+                //var N: usize = @intCast((st.N * st.time_budget_ns) / st.elapsed_ns);
+                var N: usize = @intCast((st.iteration_loops * st.time_budget_ns) / st.elapsed_ns);
                 // check that N doesn't go out of bounds
                 if (N == 0) N = 1;
                 if (N > DEFAULT_MAX_N_ITER) N = DEFAULT_MAX_N_ITER;
@@ -177,13 +178,15 @@ test "runner, time budget" {
     var r = try Runner.init(std.testing.allocator, 0, DEFAULT_MAX_N_ITER, DEFAULT_TIME_BUDGET_NS, false);
     {
         errdefer r.abort();
-        // run 10 steps spin-up until time budget is depleted => closest N is 8
+        // run 10 steps spin-up until time budget is depleted => N is 10.
         var i: usize = 0;
         while (i < 10) : (i += 1) {
-            try expectEq(Step.more, try r.next(Reading.init((DEFAULT_TIME_BUDGET_NS / 10) + 1, null)));
+            try expectEq(Step.more, try r.next(Reading.init(DEFAULT_TIME_BUDGET_NS / 10, null)));
         }
 
-        // 7 runs yield .more as the next step
+        // 9 runs yield .more as the next step
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
@@ -191,14 +194,14 @@ test "runner, time budget" {
         try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
-        // number 8 is the final step
+        // number 10 is the final step
         try expectEq(@as(?Step, null), try r.next(Reading.init(400_000_000, null)));
     }
     const result = try r.finish();
     defer result.deinit();
 
     try expectEqSlices(u64, &.{
-        100_000_000, 200_000_000, 300_000_000, 400_000_000,
+        100_000_000, 100_000_000, 100_000_000, 200_000_000, 300_000_000, 400_000_000,
         100_000_000, 200_000_000, 300_000_000, 400_000_000,
     }, result.timings_ns);
 }
@@ -207,13 +210,15 @@ test "runner, max n runs" {
     var r = try Runner.init(std.testing.allocator, 0, 10, DEFAULT_TIME_BUDGET_NS, false);
     {
         errdefer r.abort();
-        // spin-up:
+        // spin-up: make sure we do not exceed the time budget...
         var i: usize = 0;
         while (i < 10) : (i += 1) {
-            try expectEq(Step.more, try r.next(Reading.init(1, null)));
+            try expectEq(Step.more, try r.next(Reading.init((DEFAULT_TIME_BUDGET_NS / 10) - 1, null)));
         }
 
-        // same as for the time budget: 7 runs yield .more as the next step:
+        // same as for the time budget: 9 runs yield .more as the next step:
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
+        try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
@@ -221,7 +226,7 @@ test "runner, max n runs" {
         try expectEq(Step.more, try r.next(Reading.init(100_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(200_000_000, null)));
         try expectEq(Step.more, try r.next(Reading.init(300_000_000, null)));
-        // number 8 is the final step:
+        // number 10 is the final step:
         try expectEq(@as(?Step, null), try r.next(Reading.init(400_000_000, null)));
     }
     const result = try r.finish();
@@ -234,7 +239,7 @@ test "Runner - memory tracking" {
         errdefer r.abort();
         var i: usize = 0;
         while (i < 10) : (i += 1) {
-            try expectEq(Step.more, try r.next(Reading.init((DEFAULT_TIME_BUDGET_NS / 10) + 1, null)));
+            try expectEq(Step.more, try r.next(Reading.init((DEFAULT_TIME_BUDGET_NS / 10), null)));
         }
 
         try expectEq(Step.more, try r.next(Reading.init(100, .{ .max = 1, .count = 2 })));
@@ -244,21 +249,23 @@ test "Runner - memory tracking" {
         try expectEq(Step.more, try r.next(Reading.init(100, .{ .max = 16, .count = 32 })));
         try expectEq(Step.more, try r.next(Reading.init(200, .{ .max = 32, .count = 64 })));
         try expectEq(Step.more, try r.next(Reading.init(300, .{ .max = 64, .count = 128 })));
-        try expectEq(@as(?Step, null), try r.next(Reading.init(400, .{ .max = 128, .count = 256 })));
+        try expectEq(Step.more, try r.next(Reading.init(400, .{ .max = 128, .count = 256 })));
+        try expectEq(Step.more, try r.next(Reading.init(100, .{ .max = 256, .count = 512 })));
+        try expectEq(@as(?Step, null), try r.next(Reading.init(200, .{ .max = 512, .count = 1024 })));
     }
     const result = try r.finish();
     defer result.deinit();
     try expectEqSlices(u64, &.{
-        100, 200, 300, 400, 100, 200, 300, 400,
+        100, 200, 300, 400, 100, 200, 300, 400, 100, 200,
     }, result.timings_ns);
     try expectEqSlices(
         usize,
-        &.{ 1, 2, 4, 8, 16, 32, 64, 128 },
+        &.{ 1, 2, 4, 8, 16, 32, 64, 128, 256, 512 },
         result.allocations.?.maxes,
     );
     try expectEqSlices(
         usize,
-        &.{ 2, 4, 8, 16, 32, 64, 128, 256 },
+        &.{ 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024 },
         result.allocations.?.counts,
     );
 }
