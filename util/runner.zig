@@ -93,15 +93,7 @@ pub fn next(self: *Runner, reading: Reading) Error!?Step {
         .preparing => |*st| {
             st.elapsed_ns += reading.timing_ns;
             st.iteration_loops += 1;
-            if (st.elapsed_ns < st.time_budget_ns and st.iteration_loops < st.max_iterations) {
-                if (st.iterations_remaining == 0) {
-                    // double N for next iteration or use max_iterations
-                    st.N = @min(st.N * 2, DEFAULT_MAX_N_ITER);
-                    st.iterations_remaining = st.N - 1;
-                } else {
-                    st.iterations_remaining -= 1;
-                }
-            } else {
+            if (st.elapsed_ns >= st.time_budget_ns or st.iteration_loops >= st.max_iterations) {
                 // Safety first: make sure the recorded durations aren't all-zero
                 if (st.elapsed_ns == 0) st.elapsed_ns = 1;
                 // Adjust N based on the actual duration achieved
