@@ -29,18 +29,18 @@ pub const Hooks = struct {
 /// Configuration for benchmarking.
 /// This struct holds settings to control the behavior of benchmark executions.
 pub const Config = struct {
-    /// Number of iterations the benchmark has been run. Initialized to 0.
-    /// If 0 then zBench will calculate an value.
-    iterations: u16 = 0,
+    /// Number of iterations for a given benchmark.
+    /// The default is 0, meaning 'determined automatically'.
+    /// Provide a specific number to override automatic determination.
+    iterations: u32 = 0,
 
-    /// Maximum number of iterations the benchmark can run. Default is 16384.
-    /// This limit helps to avoid excessively long benchmark runs.
-    max_iterations: u16 = 16384,
+    /// Maximum number of iterations the benchmark should run.
+    /// A custom value for .iterations will override this property.
+    max_iterations: u32 = Runner.DEFAULT_MAX_N_ITER,
 
-    /// Time budget for the benchmark in nanoseconds. Default is 2e9 (2 seconds).
-    /// This value is used to determine how long a single benchmark should be allowed to run
-    /// before concluding. Helps in avoiding long-running benchmarks.
-    time_budget_ns: u64 = 2e9,
+    /// Time budget for the benchmark in nanoseconds.
+    /// This value is used to determine how long a benchmark run should take.
+    time_budget_ns: u64 = Runner.DEFAULT_TIME_BUDGET_NS,
 
     /// Configuration for lifecycle hooks in benchmarking.
     /// Provides the ability to define custom actions at different stages of the benchmark process:
