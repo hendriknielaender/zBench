@@ -35,7 +35,7 @@ pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
     defer allocator.free(output);
 
     // Tokenize the output to find the numeric value
-    var lines = std.mem.tokenize(u8, output, "\r\n");
+    var lines = std.mem.tokenizeSequence(u8, output, "\r\n");
     _ = lines.next(); // Skip the first line, which is the header
 
     // The second line contains the memory size in bytes
