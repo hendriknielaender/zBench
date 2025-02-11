@@ -20,6 +20,7 @@ pub fn allocator(self: *TrackingAllocator) Allocator {
         .vtable = &.{
             .alloc = alloc,
             .resize = resize,
+            .remap = remap,
             .free = free,
         },
     };
@@ -36,11 +37,11 @@ pub fn allocationCount(self: TrackingAllocator) usize {
 fn alloc(
     ctx: *anyopaque,
     len: usize,
-    log2_ptr_align: u8,
+    alignment: std.mem.Alignment,
     ra: usize,
 ) ?[*]u8 {
     const self: *TrackingAllocator = @ptrCast(@alignCast(ctx));
-    const result = self.parent_allocator.rawAlloc(len, log2_ptr_align, ra);
+    const result = self.parent_allocator.rawAlloc(len, alignment, ra);
     if (result) |_| {
         self.allocation_count += 1;
         self.current_allocated += len;
@@ -53,12 +54,12 @@ fn alloc(
 fn resize(
     ctx: *anyopaque,
     buf: []u8,
-    log2_buf_align: u8,
+    alignment: std.mem.Alignment,
     new_len: usize,
     ra: usize,
 ) bool {
     const self: *TrackingAllocator = @ptrCast(@alignCast(ctx));
-    const result = self.parent_allocator.rawResize(buf, log2_buf_align, new_len, ra);
+    const result = self.parent_allocator.rawResize(buf, alignment, new_len, ra);
     if (result) {
         self.allocation_count += 1;
         if (buf.len < new_len) {
@@ -70,14 +71,26 @@ fn resize(
     return result;
 }
 
+fn remap(
+    ctx: *anyopaque,
+    buf: []u8,
+    alignment: std.mem.Alignment,
+    new_len: usize,
+    ra: usize,
+) ?[*]u8 {
+    const self: *TrackingAllocator = @ptrCast(@alignCast(ctx));
+
+    return self.parent_allocator.rawRemap(buf, alignment, new_len, ra);
+}
+
 fn free(
     ctx: *anyopaque,
     buf: []u8,
-    log2_buf_align: u8,
+    alignment: std.mem.Alignment,
     ra: usize,
 ) void {
     const self: *TrackingAllocator = @ptrCast(@alignCast(ctx));
-    self.parent_allocator.rawFree(buf, log2_buf_align, ra);
+    self.parent_allocator.rawFree(buf, alignment, ra);
     self.current_allocated -= buf.len;
 }
 

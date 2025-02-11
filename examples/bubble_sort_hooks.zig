@@ -78,7 +78,7 @@ const BenchmarkData = struct {
     prng: std.Random.DefaultPrng,
 
     pub fn init(self: *BenchmarkData, allocator: std.mem.Allocator, num: usize) !void {
-        self.prng = std.rand.DefaultPrng.init(blk: {
+        self.prng = std.Random.DefaultPrng.init(blk: {
             var seed: u64 = undefined;
             std.posix.getrandom(std.mem.asBytes(&seed)) catch unreachable;
             break :blk seed;
