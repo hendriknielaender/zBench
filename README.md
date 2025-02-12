@@ -68,7 +68,7 @@ pub const Config = struct {
 
 #### Zig version
 
-Zig is in active development and the APIs can change frequently, making it challenging to support every dev build. This project currently aims to be compatible with stable, non-development builds to provide a consistent experience for the users. As of now, zBench is tested and supported on Zig version **_0.13.0_**.
+Zig is in active development, and its APIs can change frequently. The main branch of this project now targets the latest Zig master build to take advantage of new features and improvements. For users who prefer the stability of official releases, dedicated branches are maintained for older Zig versions (e.g., zig-0.13.0, zig-0.12.0, etc.). This ensures you can choose the branch that best fits your stability and feature requirements.
 
 #### Performance Note
 

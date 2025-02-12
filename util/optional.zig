@@ -3,25 +3,25 @@ const std = @import("std");
 /// Make every field of the struct T nullable.
 pub fn Optional(comptime T: type) type {
     const T_info = switch (@typeInfo(T)) {
-        .Struct => |x| x,
+        .@"struct" => |x| x,
         else => @compileError("Optional only supports struct types for now"),
     };
     var fields: [T_info.fields.len]std.builtin.Type.StructField = undefined;
     for (T_info.fields, &fields) |fi, *fo| {
         fo.* = fi;
         fo.*.type = ?fi.type;
-        fo.*.default_value = &@as(?fi.type, null);
+        fo.*.default_value_ptr = &@as(?fi.type, null);
     }
     var result = T_info;
     result.fields = &fields;
-    return @Type(.{ .Struct = result });
+    return @Type(.{ .@"struct" = result });
 }
 
 /// Take any non-null fields from x, and any null fields are taken from y
 /// instead.
 pub fn optional(comptime T: type, x: Optional(T), y: T) T {
     const T_info = switch (@typeInfo(T)) {
-        .Struct => |info| info,
+        .@"struct" => |info| info,
         else => @compileError("Optional only supports struct types for now"),
     };
     var t: T = undefined;
