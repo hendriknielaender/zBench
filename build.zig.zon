@@ -1,5 +1,6 @@
 .{
-    .name = "zbench",
+    .name = .zbench,
+    .fingerprint = 0xbb819b3cb80320b0,
     .version = "0.9.2",
     .paths = .{
         "zbench.zig",
