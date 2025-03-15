@@ -1,7 +1,7 @@
 .{
     .name = .zbench,
     .fingerprint = 0xbb819b3cef5c3761,
-    .version = "0.9.2",
+    .version = "0.9.3",
     .paths = .{
         "zbench.zig",
         "util", // anything from ./util
