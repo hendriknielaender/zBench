@@ -1,7 +1,7 @@
 const std = @import("std");
 const log = std.log.scoped(.zbench_build);
 
-const version = std.SemanticVersion{ .major = 0, .minor = 9, .patch = 2 };
+const version = std.SemanticVersion{ .major = 0, .minor = 9, .patch = 3 };
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
