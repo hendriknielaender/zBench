@@ -14,26 +14,13 @@ pub fn build(b: *std.Build) void {
     setupTesting(b, target, optimize);
 
     // Setup examples
-    setupExamples(b, target, optimize, lib);
+    setupExamples(b, target, optimize);
 
     // Setup documentation
     setupDocumentation(b, lib);
 }
 
 fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
-    const shuff_mod = b.dependency("shuffling-allocator", .{
-        .target = target,
-        .optimize = optimize,
-    }).module("shuffling-allocator");
-
-    const zbench_mod = b.addModule("zbench", .{
-        .root_source_file = b.path("zbench.zig"),
-        .optimize = optimize,
-        .target = target,
-    });
-
-    zbench_mod.addImport("shuffling-allocator", shuff_mod);
-
     const lib = b.addStaticLibrary(.{
         .name = "zbench",
         .root_source_file = b.path("zbench.zig"),
@@ -41,8 +28,6 @@ fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
         .optimize = optimize,
         .version = version,
     });
-
-    lib.root_module.addImport("shuffling-allocator", shuff_mod);
 
     b.installArtifact(lib);
 
@@ -71,7 +56,7 @@ fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
     }
 }
 
-fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, lib: *std.Build.Step.Compile) void {
+fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const example_step = b.step("examples", "Build examples");
     const example_names = [_][]const u8{
         "basic",
@@ -87,8 +72,6 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         "systeminfo",
     };
 
-    const zbench_mod = lib.root_module;
-
     for (example_names) |example_name| {
         const example = b.addExecutable(.{
             .name = example_name,
@@ -96,10 +79,11 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             .target = target,
             .optimize = optimize,
         });
-        example.root_module.addImport("zbench", zbench_mod);
-
         const install_example = b.addInstallArtifact(example, .{});
-
+        const zbench_mod = b.addModule("zbench", .{
+            .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "zbench.zig" } },
+        });
+        example.root_module.addImport("zbench", zbench_mod);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }

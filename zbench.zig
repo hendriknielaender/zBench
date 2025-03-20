@@ -16,7 +16,7 @@ const Runner = @import("./util/runner.zig");
 const Readings = Runner.Readings;
 const AllocationReading = Runner.AllocationReading;
 const TrackingAllocator = @import("./util/tracking_allocator.zig");
-const ShufflingAllocator = @import("shuffling-allocator").ShufflingAllocator;
+const ShufflingAllocator = @import("./util/shuffling_allocator.zig").ShufflingAllocator;
 
 /// Hooks containing optional hooks for lifecycle events in benchmarking.
 /// Each field in this struct is a nullable function pointer.
