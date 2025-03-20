@@ -16,6 +16,7 @@ const Runner = @import("./util/runner.zig");
 const Readings = Runner.Readings;
 const AllocationReading = Runner.AllocationReading;
 const TrackingAllocator = @import("./util/tracking_allocator.zig");
+const ShufflingAllocator = @import("./util/shuffling_allocator.zig").ShufflingAllocator;
 
 /// Hooks containing optional hooks for lifecycle events in benchmarking.
 /// Each field in this struct is a nullable function pointer.
@@ -55,6 +56,11 @@ pub const Config = struct {
     /// Track memory allocations made using the Allocator provided to
     /// benchmarks.
     track_allocations: bool = false,
+
+    /// Use the ShufflingAllocator if true (experimental).
+    /// This can be combined with track_allocations to wrap
+    /// the shuffling allocator in a tracking allocator.
+    use_shuffling_allocator: bool = false,
 };
 
 /// A benchmark definition.
@@ -72,12 +78,22 @@ const Definition = struct {
     /// Run and time a benchmark function once, as well as running before and
     /// after hooks.
     fn run(self: Definition, allocator: std.mem.Allocator) !Runner.Reading {
-        // Put the implementation into another function so we can put a
-        // tracking allocator on the stack if requested.
-        if (self.config.track_allocations) {
-            var tracking = TrackingAllocator.init(allocator);
-            return self.runImpl(tracking.allocator(), &tracking);
-        } else return self.runImpl(allocator, null);
+        if (self.config.use_shuffling_allocator) {
+            var shuffle_allocator = ShufflingAllocator.create(allocator, 0);
+            defer shuffle_allocator.deinit();
+
+            if (self.config.track_allocations) {
+                var tracking_allocator = TrackingAllocator.init(shuffle_allocator.allocator());
+                return self.runImpl(tracking_allocator.allocator(), &tracking_allocator);
+            } else {
+                return self.runImpl(shuffle_allocator.allocator(), null);
+            }
+        } else if (self.config.track_allocations) {
+            var tracking_allocator = TrackingAllocator.init(allocator);
+            return self.runImpl(tracking_allocator.allocator(), &tracking_allocator);
+        }
+
+        return self.runImpl(allocator, null);
     }
 
     fn runImpl(
