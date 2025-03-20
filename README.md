@@ -55,6 +55,7 @@ pub const Config = struct {
     time_budget_ns: u64 = 2e9, // 2 seconds
     hooks: Hooks = .{},
     track_allocations: bool = false, 
+    use_shuffling_allocator: bool = false,
 };
 ```
 
@@ -63,6 +64,9 @@ pub const Config = struct {
 * `time_budget_ns`: Define a time budget for the benchmark in nanoseconds. Helps in limiting the total execution time of the benchmark.
 * `hooks`: Set `before_all`, `after_all`, `before_each`, and `after_each` hooks to function pointers.
 * `track_allocations`: Boolean to enable or disable tracking memory allocations during the benchmark.
+* `use_shuffling_allocator`: an experimental `ShufflingAllocator`. This allocator randomizes memory allocation patterns, which can be useful for identifying potential memory-related bugs and reducing bias caused by predictable memory layouts during benchmarking.
+
+**Important Note:** The `ShufflingAllocator` will likely introduce *some* performance overhead compared to a standard allocator. The extent of the overhead is currently not specified! Consider this when interpreting your benchmark results.
 
 ### Compatibility Notes
 
