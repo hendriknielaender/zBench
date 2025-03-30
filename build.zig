@@ -23,7 +23,7 @@ pub fn build(b: *std.Build) void {
 fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
     const lib = b.addStaticLibrary(.{
         .name = "zbench",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "zbench.zig" } },
+        .root_source_file = b.path("zbench.zig"),
         .target = target,
         .optimize = optimize,
         .version = version,
@@ -67,6 +67,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         "memory_tracking",
         "parameterised",
         "progress",
+        "shuffling_allocator",
         "sleep",
         "systeminfo",
     };
