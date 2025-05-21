@@ -1,5 +1,5 @@
 .{
-    .name = .zbench,
+    .name = "zbench",
     .fingerprint = 0xbb819b3cef5c3761,
     .version = "0.10.0",
     .dependencies = .{},
