@@ -1,0 +1,26 @@
+# zbench
+
+> zbench is a comprehensive and flexible benchmarking library for the Zig programming language. It enables precise measurement of code execution time and memory allocation patterns, supporting custom lifecycle hooks, parameterized tests, detailed statistical analysis, and multiple output formats including human-readable and JSON.
+
+zbench is designed for developers seeking to understand and optimize the performance of their Zig code. It provides a structured approach to creating, configuring, and running benchmarks, from simple function timings to more complex scenarios involving memory analysis and custom setup/teardown logic. The library is organized around a central `Benchmark` manager, configurable `Config` settings, and `Result` objects that encapsulate detailed performance data. The `Iterator` API allows for incremental progress reporting, suitable for long-running benchmark suites or UI integration.
+
+## Core Documentation
+
+- [Introduction](intro.md): An overview of zbench, its core philosophy, fundamental concepts (like `Benchmark`, `Config`, `Hooks`), and how it helps in performance analysis of Zig applications.
+- [Quickstart Guide](quickstart.md): A step-by-step tutorial to get started with zbench, covering how to write your first simple and parameterized benchmarks, run them, and interpret the basic output.
+- [Advanced Usage](advanced.md): Delves into more complex features such as detailed configuration options, effective use of lifecycle hooks (`before_all`, `after_all`, `before_each`, `after_each`), memory allocation tracking with `TrackingAllocator` and the experimental `ShufflingAllocator`, and leveraging the `Iterator` API for custom progress reporting or integration.
+
+## API Reference
+
+- [Main API (zbench.zig)](../zbench.zig): The primary source file defining `Benchmark`, `Config`, `Hooks`, `Definition`, `Result`, `BenchFunc`, and `ParameterisedFunc`. This is the main entry point for using the library.
+- [Runner (util/runner.zig)](../util/runner.zig): Contains the `Runner` struct and related types (`Readings`, `AllocationReading`) responsible for executing benchmark iterations and collecting raw timing and allocation data.
+- [Statistics (util/statistics.zig)](../util/statistics.zig): Provides the `Statistics` struct used for calculating mean, standard deviation, min/max, and percentiles from benchmark readings.
+- [Tracking Allocator (util/tracking_allocator.zig)](../util/tracking_allocator.zig): Defines the `TrackingAllocator` used for monitoring memory allocations during benchmarks.
+- [Platform Utilities (util/platform.zig)](../util/platform.zig): Utilities for gathering system information (`OsInfo`) to provide context for benchmark results.
+
+## Optional
+
+- [Shuffling Allocator (util/shuffling_allocator.zig)](../util/shuffling_allocator.zig): Defines the experimental `ShufflingAllocator`, which can help in identifying performance issues related to memory layout.
+- [Formatting Utilities (util/format.zig)](../util/format.zig): Helper functions for formatting benchmark results into human-readable strings and JSON.
+- [Color Utilities (util/color.zig)](../util/color.zig): Defines `Color` enums and functions for adding ANSI color codes to console output.
+- [Optional Type (util/optional.zig)](../util/optional.zig): Provides a simple `Optional` type and helper function used for configurable parameters.
