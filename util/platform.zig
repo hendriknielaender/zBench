@@ -68,7 +68,7 @@ fn getCpuCores() !u32 {
         .linux => try lnx.getCpuCores(),
         .macos => try mac.getCpuCores(),
         .windows => blk: {
-            var scratch: [64]u8 = undefined;
+            var scratch: [4096]u8 = undefined;
             var fbs = std.heap.FixedBufferAllocator.init(&scratch);
             break :blk try win.getCpuCores(fbs.allocator());
         },
@@ -81,7 +81,7 @@ fn getTotalMemory() !u64 {
         .linux => try lnx.getTotalMemory(),
         .macos => try mac.getTotalMemory(),
         .windows => blk: {
-            var scratch: [128]u8 = undefined;
+            var scratch: [4096]u8 = undefined;
             var fbs = std.heap.FixedBufferAllocator.init(&scratch);
             break :blk try win.getTotalMemory(fbs.allocator());
         },
