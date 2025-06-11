@@ -24,19 +24,20 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
     return buf[start..][0..len];
 }
 
-pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
+pub fn getCpuCores() !u32 {
     const file = try fs.cwd().openFile("/proc/cpuinfo", .{});
     defer file.close();
 
-    const buf = try allocator.alloc(u8, 1024);
-    _ = try file.read(buf);
+    var buf: [1024]u8 = undefined;
+    _ = try file.read(&buf);
 
-    var token_iterator = std.mem.tokenizeSequence(u8, buf, "\n");
+    var token_iterator = std.mem.tokenizeSequence(u8, &buf, "\n");
     while (token_iterator.next()) |line| {
         if (std.mem.startsWith(u8, line, "cpu cores")) {
             const start = if (mem.indexOf(u8, line, ":")) |pos| pos + 2 else 0;
-            return std.fmt.parseInt(u32, line[start..], 10) catch |err| {
-                log.err("Error parsing total memory size: {}\n", .{err});
+            const trimmed = std.mem.trim(u8, line[start..], " \t\n\r");
+            return std.fmt.parseInt(u32, trimmed, 10) catch |err| {
+                log.err("Error parsing CPU cores count: {}\n", .{err});
                 return err;
             };
         }
@@ -45,14 +46,14 @@ pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
     return error.CouldNotFindNumCores;
 }
 
-pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
+pub fn getTotalMemory() !u64 {
     const file = try std.fs.cwd().openFile("/proc/meminfo", .{});
     defer file.close();
 
-    const buf: []u8 = try allocator.alloc(u8, 1024);
-    _ = try file.read(buf);
+    var buf: [1024]u8 = undefined;
+    _ = try file.read(&buf);
 
-    var token_iterator = std.mem.tokenizeSequence(u8, buf, "\n");
+    var token_iterator = std.mem.tokenizeSequence(u8, &buf, "\n");
     while (token_iterator.next()) |line| {
         if (std.mem.startsWith(u8, line, "MemTotal:")) {
             // Extract the numeric value from the line

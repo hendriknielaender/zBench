@@ -50,7 +50,7 @@ pub fn getSystemInfo() !OsInfo {
 }
 
 fn getCpuName() ![]const u8 {
-    var scratch: [8192]u8 = undefined;
+    var scratch: [128]u8 = undefined;
     var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     const cpu = switch (builtin.os.tag) {
         .linux => try lnx.getCpuName(fbs.allocator()),
@@ -64,23 +64,19 @@ fn getCpuName() ![]const u8 {
 }
 
 fn getCpuCores() !u32 {
-    var scratch: [8192]u8 = undefined;
-    var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     return switch (builtin.os.tag) {
-        .linux => try lnx.getCpuCores(fbs.allocator()),
-        .macos => try mac.getCpuCores(fbs.allocator()),
-        .windows => try win.getCpuCores(fbs.allocator()),
+        .linux => try lnx.getCpuCores(),
+        .macos => try mac.getCpuCores(),
+        .windows => try win.getCpuCores(),
         else => error.UnsupportedOs,
     };
 }
 
 fn getTotalMemory() !u64 {
-    var scratch: [8192]u8 = undefined;
-    var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     return switch (builtin.os.tag) {
-        .linux => try lnx.getTotalMemory(fbs.allocator()),
-        .macos => try mac.getTotalMemory(fbs.allocator()),
-        .windows => try win.getTotalMemory(fbs.allocator()),
+        .linux => try lnx.getTotalMemory(),
+        .macos => try mac.getTotalMemory(),
+        .windows => try win.getTotalMemory(),
         else => error.UnsupportedOs,
     };
 }

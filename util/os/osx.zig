@@ -1,30 +1,52 @@
 const std = @import("std");
+const c = std.c;
 const log = std.log.scoped(.zbench_platform_osx);
 
 pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
-    return try exec(allocator, &.{ "sysctl", "-n", "machdep.cpu.brand_string" });
+    return try getSysctlByName(allocator, "machdep.cpu.brand_string");
 }
 
-pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
-    const str = try exec(allocator, &.{ "sysctl", "-n", "hw.physicalcpu" });
-    return std.fmt.parseInt(u32, str, 10) catch |err| {
-        log.err("Error parsing CPU cores count: {}\n", .{err});
-        return err;
-    };
+pub fn getCpuCores() !u32 {
+    var value: u32 = 0;
+    var size: usize = @sizeOf(u32);
+    
+    if (c.sysctlbyname("hw.physicalcpu", &value, &size, null, 0) != 0) {
+        return error.SysctlFailed;
+    }
+    
+    return value;
 }
 
-pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
-    const str = try exec(allocator, &.{ "sysctl", "-n", "hw.memsize" });
-    return std.fmt.parseInt(u64, str, 10) catch |err| {
-        log.err("Error parsing total memory size: {}\n", .{err});
-        return err;
-    };
+pub fn getTotalMemory() !u64 {
+    var value: u64 = 0;
+    var size: usize = @sizeOf(u64);
+    
+    if (c.sysctlbyname("hw.memsize", &value, &size, null, 0) != 0) {
+        return error.SysctlFailed;
+    }
+    
+    return value;
 }
 
-fn exec(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
-    const stdout = (try std.process.Child.run(.{ .allocator = allocator, .argv = args })).stdout;
-
-    if (stdout.len == 0) return error.EmptyOutput;
-
-    return stdout[0 .. stdout.len - 1];
+fn getSysctlByName(allocator: std.mem.Allocator, name: []const u8) ![]const u8 {
+    var size: usize = 0;
+    
+    const name_z = try allocator.dupeZ(u8, name);
+    defer allocator.free(name_z);
+    
+    if (c.sysctlbyname(name_z.ptr, null, &size, null, 0) != 0) {
+        return error.SysctlFailed;
+    }
+    
+    const buffer = try allocator.alloc(u8, size);
+    
+    if (c.sysctlbyname(name_z.ptr, buffer.ptr, &size, null, 0) != 0) {
+        return error.SysctlFailed;
+    }
+    
+    if (size > 0 and buffer[size - 1] == 0) {
+        return buffer[0 .. size - 1];
+    }
+    
+    return buffer[0..size];
 }
