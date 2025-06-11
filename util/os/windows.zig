@@ -35,20 +35,19 @@ extern "kernel32" fn GetSystemInfo(*SYSTEM_INFO) callconv(std.os.windows.WINAPI)
 extern "kernel32" fn GlobalMemoryStatusEx(*MEMORYSTATUSEX) callconv(std.os.windows.WINAPI) std.os.windows.BOOL;
 
 pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
-    // For CPU name, we still need to use registry or WMI, but let's use a simpler approach
     // Use the processor architecture info for now as a fallback
     var system_info: SYSTEM_INFO = undefined;
     GetSystemInfo(&system_info);
-    
+
     const arch_name = switch (system_info.wProcessorArchitecture) {
         0 => "Intel x86",
         5 => "ARM",
-        6 => "Intel Itanium-based", 
+        6 => "Intel Itanium-based",
         9 => "x64 (AMD or Intel)",
         12 => "ARM64",
         else => "Unknown Architecture",
     };
-    
+
     return try allocator.dupe(u8, arch_name);
 }
 
@@ -61,11 +60,11 @@ pub fn getCpuCores() !u32 {
 pub fn getTotalMemory() !u64 {
     var memory_status: MEMORYSTATUSEX = undefined;
     memory_status.dwLength = @sizeOf(MEMORYSTATUSEX);
-    
+
     if (GlobalMemoryStatusEx(&memory_status) == 0) {
         return error.CouldNotRetrieveMemorySize;
     }
-    
+
     return memory_status.ullTotalPhys;
 }
 
