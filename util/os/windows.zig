@@ -10,25 +10,46 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
     return stdout[45 .. stdout.len - 7];
 }
 
-pub fn getCpuCores() !u32 {
-    // Use Windows API to get CPU core count directly
-    const windows = std.os.windows;
-    var system_info: windows.SYSTEM_INFO = undefined;
-    windows.kernel32.GetSystemInfo(&system_info);
-    return system_info.dwNumberOfProcessors;
-}
+pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
+    // Use provided allocator for WMIC command execution
+    const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "NumberOfCores", "/format:value" });
 
-pub fn getTotalMemory() !u64 {
-    // Use Windows API to get total physical memory directly
-    const windows = std.os.windows;
-    var memory_status: windows.MEMORYSTATUSEX = undefined;
-    memory_status.dwLength = @sizeOf(windows.MEMORYSTATUSEX);
-    
-    if (windows.kernel32.GlobalMemoryStatusEx(&memory_status) == 0) {
-        return error.CouldNotRetrieveMemorySize;
+    // Find NumberOfCores=X pattern
+    if (std.mem.indexOf(u8, stdout, "NumberOfCores=")) |pos| {
+        const start = pos + "NumberOfCores=".len;
+        var end = start;
+        while (end < stdout.len and std.ascii.isDigit(stdout[end])) : (end += 1) {}
+        
+        if (end > start) {
+            return std.fmt.parseInt(u32, stdout[start..end], 10) catch |err| {
+                log.err("Error parsing CPU cores count: {}\n", .{err});
+                return err;
+            };
+        }
     }
     
-    return memory_status.ullTotalPhys;
+    return error.CouldNotFindNumCores;
+}
+
+pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
+    // Use provided allocator for WMIC command execution
+    const output = try exec(allocator, &.{ "wmic", "ComputerSystem", "get", "TotalPhysicalMemory", "/format:value" });
+
+    // Find TotalPhysicalMemory=X pattern
+    if (std.mem.indexOf(u8, output, "TotalPhysicalMemory=")) |pos| {
+        const start = pos + "TotalPhysicalMemory=".len;
+        var end = start;
+        while (end < output.len and std.ascii.isDigit(output[end])) : (end += 1) {}
+        
+        if (end > start) {
+            return std.fmt.parseInt(u64, output[start..end], 10) catch |err| {
+                log.err("Error parsing total memory size: {}\n", .{err});
+                return err;
+            };
+        }
+    }
+
+    return error.CouldNotRetrieveMemorySize;
 }
 
 fn exec(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
