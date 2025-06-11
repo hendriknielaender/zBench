@@ -7,21 +7,23 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
     const file = try fs.cwd().openFile("/proc/cpuinfo", .{});
     defer file.close();
 
-    const buf = try allocator.alloc(u8, 1024);
-    _ = try file.read(buf);
+    var buf: [1024]u8 = undefined;
+    const bytes_read = try file.read(&buf);
+    const content = buf[0..bytes_read];
 
     const needle = "model name";
-    const start = if (mem.indexOf(u8, buf, needle)) |pos|
+    const start = if (mem.indexOf(u8, content, needle)) |pos|
         pos + needle.len + 3
     else
         return error.CouldNotFindCpuName;
 
-    const len = if (mem.indexOfScalar(u8, buf[start..], '\n')) |pos|
+    const len = if (mem.indexOfScalar(u8, content[start..], '\n')) |pos|
         pos
     else
         return error.CouldNotFindCpuName;
 
-    return buf[start..][0..len];
+    const cpu_name = content[start..][0..len];
+    return try allocator.dupe(u8, cpu_name);
 }
 
 pub fn getCpuCores() !u32 {
