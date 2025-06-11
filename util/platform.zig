@@ -67,11 +67,7 @@ fn getCpuCores() !u32 {
     return switch (builtin.os.tag) {
         .linux => try lnx.getCpuCores(),
         .macos => try mac.getCpuCores(),
-        .windows => blk: {
-            var scratch: [4096]u8 = undefined;
-            var fbs = std.heap.FixedBufferAllocator.init(&scratch);
-            break :blk try win.getCpuCores(fbs.allocator());
-        },
+        .windows => try win.getCpuCores(),
         else => error.UnsupportedOs,
     };
 }
@@ -80,11 +76,7 @@ fn getTotalMemory() !u64 {
     return switch (builtin.os.tag) {
         .linux => try lnx.getTotalMemory(),
         .macos => try mac.getTotalMemory(),
-        .windows => blk: {
-            var scratch: [4096]u8 = undefined;
-            var fbs = std.heap.FixedBufferAllocator.init(&scratch);
-            break :blk try win.getTotalMemory(fbs.allocator());
-        },
+        .windows => try win.getTotalMemory(),
         else => error.UnsupportedOs,
     };
 }
