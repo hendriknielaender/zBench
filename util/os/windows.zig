@@ -34,7 +34,7 @@ const MEMORYSTATUSEX = extern struct {
 extern "kernel32" fn GetSystemInfo(*SYSTEM_INFO) callconv(std.os.windows.WINAPI) void;
 extern "kernel32" fn GlobalMemoryStatusEx(*MEMORYSTATUSEX) callconv(std.os.windows.WINAPI) std.os.windows.BOOL;
 
-pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
+pub fn getCpuName() ![128:0]u8 {
     // Use the processor architecture info for now as a fallback
     var system_info: SYSTEM_INFO = undefined;
     GetSystemInfo(&system_info);
@@ -48,7 +48,12 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
         else => "Unknown Architecture",
     };
 
-    return try allocator.dupe(u8, arch_name);
+    var result: [128:0]u8 = undefined;
+    const len = @min(result.len - 1, arch_name.len);
+    @memcpy(result[0..len], arch_name[0..len]);
+    result[len] = 0;
+
+    return result;
 }
 
 pub fn getCpuCores() !u32 {

@@ -3,7 +3,7 @@ const fs = std.fs;
 const mem = std.mem;
 const log = std.log.scoped(.zbench_platform_linux);
 
-pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
+pub fn getCpuName() ![128:0]u8 {
     const file = try fs.cwd().openFile("/proc/cpuinfo", .{});
     defer file.close();
 
@@ -23,7 +23,13 @@ pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
         return error.CouldNotFindCpuName;
 
     const cpu_name = content[start..][0..len];
-    return try allocator.dupe(u8, cpu_name);
+
+    var result: [128:0]u8 = undefined;
+    const copy_len = @min(result.len - 1, len);
+    @memcpy(result[0..copy_len], cpu_name[0..copy_len]);
+    result[copy_len] = 0;
+
+    return result;
 }
 
 pub fn getCpuCores() !u32 {
