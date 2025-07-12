@@ -21,11 +21,16 @@ pub fn build(b: *std.Build) void {
 }
 
 fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
-    const lib = b.addStaticLibrary(.{
-        .name = "zbench",
+    const module = b.createModule(.{
         .root_source_file = b.path("zbench.zig"),
         .target = target,
         .optimize = optimize,
+    });
+
+    const lib = b.addLibrary(.{
+        .linkage = .static,
+        .name = "zbench",
+        .root_module = module,
         .version = version,
     });
 
@@ -45,11 +50,14 @@ fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
 
     const test_step = b.step("test", "Run library tests");
     for (test_files) |test_file| {
-        const _test = b.addTest(.{
-            .name = test_file.name,
+        const test_module = b.createModule(.{
             .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = test_file.path } },
             .target = target,
             .optimize = optimize,
+        });
+        const _test = b.addTest(.{
+            .name = test_file.name,
+            .root_module = test_module,
         });
         const run_test = b.addRunArtifact(_test);
         test_step.dependOn(&run_test.step);
@@ -74,11 +82,14 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
     };
 
     for (example_names) |example_name| {
-        const example = b.addExecutable(.{
-            .name = example_name,
+        const example_module = b.createModule(.{
             .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = b.fmt("examples/{s}.zig", .{example_name}) } },
             .target = target,
             .optimize = optimize,
+        });
+        const example = b.addExecutable(.{
+            .name = example_name,
+            .root_module = example_module,
         });
         const install_example = b.addInstallArtifact(example, .{});
         const zbench_mod = b.addModule("zbench", .{
