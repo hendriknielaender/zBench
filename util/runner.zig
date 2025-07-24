@@ -97,11 +97,10 @@ pub fn next(self: *Runner, reading: Reading) Error!?Step {
                 // Safety first: make sure the recorded durations aren't all-zero
                 if (st.elapsed_ns == 0) st.elapsed_ns = 1;
                 // Adjust N based on the actual duration achieved
-                //var N: usize = @intCast((st.N * st.time_budget_ns) / st.elapsed_ns);
                 var N: usize = @intCast((st.iteration_loops * st.time_budget_ns) / st.elapsed_ns);
                 // check that N doesn't go out of bounds
                 if (N == 0) N = 1;
-                if (N > st.max_iterations) N = st.max_iterations;
+                if (N > st.max_iterations) N = st.max_iterations; // defautls to DEFAULT_MAX_N_ITER
                 // Now run the benchmark with the adjusted N value
                 self.state = .{ .running = .{
                     .iterations_count = N,
