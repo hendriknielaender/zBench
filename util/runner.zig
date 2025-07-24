@@ -169,7 +169,7 @@ test "runner, time budget limited" {
     var r = try Runner.init(std.testing.allocator, 0, DEFAULT_MAX_N_ITER, DEFAULT_TIME_BUDGET_NS, false);
     {
         errdefer r.abort();
-        // run 10 steps spin-up until time budget is depleted => N is 10 (although max_iterations is way higher).
+        // run 10 steps spin-up, time budget is depleted => N is 10, but max_iterations aren't reached.
         var i: usize = 0;
         while (i < 10) : (i += 1) {
             try expectEq(Step.more, try r.next(Reading.init(DEFAULT_TIME_BUDGET_NS / 10, null)));
