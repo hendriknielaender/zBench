@@ -100,7 +100,7 @@ pub fn next(self: *Runner, reading: Reading) Error!?Step {
                 var N: usize = @intCast((st.iteration_loops * st.time_budget_ns) / st.elapsed_ns);
                 // check that N doesn't go out of bounds
                 if (N == 0) N = 1;
-                if (N > st.max_iterations) N = st.max_iterations; // defautls to DEFAULT_MAX_N_ITER
+                if (N > st.max_iterations) N = st.max_iterations; // defaults to DEFAULT_MAX_N_ITER
                 // Now run the benchmark with the adjusted N value
                 self.state = .{ .running = .{
                     .iterations_count = N,
@@ -165,11 +165,11 @@ pub fn status(self: Runner) Status {
     };
 }
 
-test "runner, time budget" {
+test "runner, time budget limited" {
     var r = try Runner.init(std.testing.allocator, 0, DEFAULT_MAX_N_ITER, DEFAULT_TIME_BUDGET_NS, false);
     {
         errdefer r.abort();
-        // run 10 steps spin-up until time budget is depleted => N is 10.
+        // run 10 steps spin-up until time budget is depleted => N is 10 (although max_iterations is way higher).
         var i: usize = 0;
         while (i < 10) : (i += 1) {
             try expectEq(Step.more, try r.next(Reading.init(DEFAULT_TIME_BUDGET_NS / 10, null)));
@@ -197,14 +197,14 @@ test "runner, time budget" {
     }, result.timings_ns);
 }
 
-test "runner, max n runs" {
+test "runner, max n runs limited" {
     var r = try Runner.init(std.testing.allocator, 0, 10, DEFAULT_TIME_BUDGET_NS, false);
     {
         errdefer r.abort();
-        // spin-up: make sure we do not exceed the time budget...
+        // spin-up: each run takes just one ns so that the max_iterations setting kicks in
         var i: usize = 0;
         while (i < 10) : (i += 1) {
-            try expectEq(Step.more, try r.next(Reading.init((DEFAULT_TIME_BUDGET_NS / 10) - 1, null)));
+            try expectEq(Step.more, try r.next(Reading.init(1, null)));
         }
 
         // same as for the time budget: 9 runs yield .more as the next step:
