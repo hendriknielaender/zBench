@@ -65,6 +65,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         "hooks",
         "json",
         "memory_tracking",
+        "memory_comparison",
         "parameterised",
         "progress",
         "shuffling_allocator",

@@ -50,37 +50,46 @@ pub fn getSystemInfo() !OsInfo {
 }
 
 fn getCpuName() ![]const u8 {
-    var scratch: [8192]u8 = undefined;
-    var fbs = std.heap.FixedBufferAllocator.init(&scratch);
-    const cpu = switch (builtin.os.tag) {
-        .linux => try lnx.getCpuName(fbs.allocator()),
-        .macos => try mac.getCpuName(fbs.allocator()),
-        .windows => try win.getCpuName(fbs.allocator()),
-        else => error.UnsupportedOs,
-    };
-    const len: usize = @min(cpu_name_buffer.len, cpu.len);
-    std.mem.copyForwards(u8, cpu_name_buffer[0..len], cpu[0..len]);
-    return cpu_name_buffer[0..len];
+    switch (builtin.os.tag) {
+        .linux => {
+            const cpu_array = try lnx.getCpuName();
+            const len = std.mem.indexOfScalar(u8, &cpu_array, 0) orelse cpu_array.len;
+            const copy_len = @min(cpu_name_buffer.len, len);
+            @memcpy(cpu_name_buffer[0..copy_len], cpu_array[0..copy_len]);
+            return cpu_name_buffer[0..copy_len];
+        },
+        .macos => {
+            const cpu_array = try mac.getCpuName();
+            const len = std.mem.indexOfScalar(u8, &cpu_array, 0) orelse cpu_array.len;
+            const copy_len = @min(cpu_name_buffer.len, len);
+            @memcpy(cpu_name_buffer[0..copy_len], cpu_array[0..copy_len]);
+            return cpu_name_buffer[0..copy_len];
+        },
+        .windows => {
+            const cpu_array = try win.getCpuName();
+            const len = std.mem.indexOfScalar(u8, &cpu_array, 0) orelse cpu_array.len;
+            const copy_len = @min(cpu_name_buffer.len, len);
+            @memcpy(cpu_name_buffer[0..copy_len], cpu_array[0..copy_len]);
+            return cpu_name_buffer[0..copy_len];
+        },
+        else => return error.UnsupportedOs,
+    }
 }
 
 fn getCpuCores() !u32 {
-    var scratch: [8192]u8 = undefined;
-    var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     return switch (builtin.os.tag) {
-        .linux => try lnx.getCpuCores(fbs.allocator()),
-        .macos => try mac.getCpuCores(fbs.allocator()),
-        .windows => try win.getCpuCores(fbs.allocator()),
+        .linux => try lnx.getCpuCores(),
+        .macos => try mac.getCpuCores(),
+        .windows => try win.getCpuCores(),
         else => error.UnsupportedOs,
     };
 }
 
 fn getTotalMemory() !u64 {
-    var scratch: [8192]u8 = undefined;
-    var fbs = std.heap.FixedBufferAllocator.init(&scratch);
     return switch (builtin.os.tag) {
-        .linux => try lnx.getTotalMemory(fbs.allocator()),
-        .macos => try mac.getTotalMemory(fbs.allocator()),
-        .windows => try win.getTotalMemory(fbs.allocator()),
+        .linux => try lnx.getTotalMemory(),
+        .macos => try mac.getTotalMemory(),
+        .windows => try win.getTotalMemory(),
         else => error.UnsupportedOs,
     };
 }
