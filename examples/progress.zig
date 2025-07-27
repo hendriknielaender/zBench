@@ -19,7 +19,7 @@ fn myBenchmark2(_: std.mem.Allocator) void {
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     var bench = zbench.Benchmark.init(allocator, .{});
     defer bench.deinit();
 

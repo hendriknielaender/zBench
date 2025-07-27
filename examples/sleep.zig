@@ -2,11 +2,11 @@ const std = @import("std");
 const zbench = @import("zbench");
 
 fn sleepBenchmark(_: std.mem.Allocator) void {
-    std.time.sleep(100_000_000);
+    std.Thread.sleep(100_000_000);
 }
 
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.fs.File.stdout().deprecatedWriter();
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
     try bench.add("Sleep Benchmark", sleepBenchmark, .{});
