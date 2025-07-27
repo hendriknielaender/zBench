@@ -18,13 +18,15 @@ const MyBenchmark = struct {
 };
 
 pub fn main() !void {
-    const stdout = std.fs.File.stdout().deprecatedWriter();
+    var stdout = std.fs.File.stdout().writer(&.{});
+    var writer = &stdout.interface;
+
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
     try bench.addParam("My Benchmark 1", &MyBenchmark.init(100_000), .{});
     try bench.addParam("My Benchmark 2", &MyBenchmark.init(200_000), .{});
 
-    try stdout.writeAll("\n");
-    try bench.run(stdout);
+    try writer.writeAll("\n");
+    try bench.run(writer);
 }

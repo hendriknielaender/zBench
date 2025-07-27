@@ -19,21 +19,23 @@ fn myBenchmark2(_: std.mem.Allocator) void {
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    const stdout = std.fs.File.stdout().deprecatedWriter();
+    var stdout = std.fs.File.stdout().writer(&.{});
+    var writer = &stdout.interface;
+
     var bench = zbench.Benchmark.init(allocator, .{});
     defer bench.deinit();
 
     try bench.add("My Benchmark 1", myBenchmark1, .{});
     try bench.add("My Benchmark 2", myBenchmark2, .{});
 
-    try stdout.writeAll("\n");
-    try zbench.prettyPrintHeader(stdout);
+    try writer.writeAll("\n");
+    try zbench.prettyPrintHeader(writer);
     var iter = try bench.iterator();
     while (try iter.next()) |step| switch (step) {
         .progress => |_| {},
         .result => |x| {
             defer x.deinit();
-            try x.prettyPrint(allocator, stdout, true);
+            try x.prettyPrint(allocator, writer, true);
         },
     };
 }

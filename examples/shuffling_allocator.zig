@@ -11,7 +11,8 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    const stdout = std.fs.File.stdout().deprecatedWriter();
+    var stdout = std.fs.File.stdout().writer(&.{});
+    var writer = &stdout.interface;
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 64,
@@ -37,6 +38,6 @@ pub fn main() !void {
         .use_shuffling_allocator = true,
     });
 
-    try stdout.writeAll("\n");
-    try bench.run(stdout);
+    try writer.writeAll("\n");
+    try bench.run(writer);
 }
