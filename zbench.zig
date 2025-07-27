@@ -354,32 +354,32 @@ pub const Result = struct {
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{truncated_name});
         try setColor(colors, writer, Color.cyan);
-        try writer.print("{d:<8} {s:<15}", .{
+        try writer.print("{d:<8} {D:<15}", .{
             self.readings.iterations,
-            std.fmt.fmtDuration(s.total),
+            s.total,
         });
         // Mean + standard deviation
         try setColor(colors, writer, Color.green);
         try writer.print("{s:<23}", .{
-            try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
-                std.fmt.fmtDuration(s.mean),
-                std.fmt.fmtDuration(s.stddev),
+            try std.fmt.bufPrint(&buf, "{D:.3} ± {D:.3}", .{
+                s.mean,
+                s.stddev,
             }),
         });
         // Minimum and maximum
         try setColor(colors, writer, Color.blue);
         try writer.print("{s:<29}", .{
-            try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
-                std.fmt.fmtDuration(s.min),
-                std.fmt.fmtDuration(s.max),
+            try std.fmt.bufPrint(&buf, "({D:.3} ... {D:.3})", .{
+                s.min,
+                s.max,
             }),
         });
         // Percentiles
         try setColor(colors, writer, Color.cyan);
-        try writer.print("{:<10} {:<10} {:<10}", .{
-            std.fmt.fmtDuration(s.percentiles.p75),
-            std.fmt.fmtDuration(s.percentiles.p99),
-            std.fmt.fmtDuration(s.percentiles.p995),
+        try writer.print("{D:<10} {D:<10} {D:<10}", .{
+            s.percentiles.p75,
+            s.percentiles.p99,
+            s.percentiles.p995,
         });
         // End of line
         try setColor(colors, writer, Color.reset);
@@ -395,25 +395,25 @@ pub const Result = struct {
             // Mean + standard deviation
             try setColor(colors, writer, Color.green);
             try writer.print("{s:<23}", .{
-                try std.fmt.bufPrint(&buf, "{:.3} ± {:.3}", .{
-                    std.fmt.fmtIntSizeBin(m.mean),
-                    std.fmt.fmtIntSizeBin(m.stddev),
+                try std.fmt.bufPrint(&buf, "{Bi:.3} ± {Bi:.3}", .{
+                    m.mean,
+                    m.stddev,
                 }),
             });
             // Minimum and maximum
             try setColor(colors, writer, Color.blue);
             try writer.print("{s:<29}", .{
-                try std.fmt.bufPrint(&buf, "({:.3} ... {:.3})", .{
-                    std.fmt.fmtIntSizeBin(m.min),
-                    std.fmt.fmtIntSizeBin(m.max),
+                try std.fmt.bufPrint(&buf, "({Bi:.3} ... {Bi:.3})", .{
+                    m.min,
+                    m.max,
                 }),
             });
             // Percentiles
             try setColor(colors, writer, Color.cyan);
-            try writer.print("{:<10.3} {:<10.3} {:<10.3}", .{
-                std.fmt.fmtIntSizeBin(m.percentiles.p75),
-                std.fmt.fmtIntSizeBin(m.percentiles.p99),
-                std.fmt.fmtIntSizeBin(m.percentiles.p995),
+            try writer.print("{Bi:<10.3} {Bi:<10.3} {Bi:<10.3}", .{
+                m.percentiles.p75,
+                m.percentiles.p99,
+                m.percentiles.p995,
             });
             // End of line
             try setColor(colors, writer, Color.reset);
@@ -436,12 +436,12 @@ pub const Result = struct {
             const allocation_maxes_stats =
                 try Statistics(usize).init(allocator, allocs.maxes);
             try writer.print(
-                \\{{ "name": "{s}",
-                \\   "timing_statistics": {}, "timings": {},
-                \\   "max_allocation_statistics": {}, "max_allocations": {} }}
+                \\{{ "name": "{f}",
+                \\   "timing_statistics": {f}, "timings": {f},
+                \\   "max_allocation_statistics": {f}, "max_allocations": {f} }}
             ,
                 .{
-                    std.fmt.fmtSliceEscapeLower(self.name),
+                    std.ascii.hexEscape(self.name, .lower),
                     statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
                     format.fmtJSONArray(u64, self.readings.timings_ns),
                     statistics.fmtJSON(usize, "bytes", allocation_maxes_stats),
@@ -450,11 +450,11 @@ pub const Result = struct {
             );
         } else {
             try writer.print(
-                \\{{ "name": "{s}",
-                \\   "timing_statistics": {}, "timings": {} }}
+                \\{{ "name": "{f}",
+                \\   "timing_statistics": {f}, "timings": {f} }}
             ,
                 .{
-                    std.fmt.fmtSliceEscapeLower(self.name),
+                    std.ascii.hexEscape(self.name, .lower),
                     statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
                     format.fmtJSONArray(u64, self.readings.timings_ns),
                 },

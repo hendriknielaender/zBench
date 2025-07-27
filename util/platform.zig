@@ -17,21 +17,19 @@ pub const OsInfo = struct {
 
     pub fn format(
         info: OsInfo,
-        comptime _: []const u8,
-        _: std.fmt.FormatOptions,
-        writer: anytype,
+        writer: *std.io.Writer,
     ) !void {
-        try std.fmt.format(writer,
+        try writer.print(
             \\  Operating System: {s}
             \\  CPU:              {s}
             \\  CPU Cores:        {d}
-            \\  Total Memory:     {d:.3}
+            \\  Total Memory:     {Bi:.3}
             \\
         , .{
             info.platform,
             info.cpu,
             info.cpu_cores,
-            std.fmt.fmtIntSizeBin(info.memory_total),
+            info.memory_total,
         });
     }
 };
