@@ -2,7 +2,7 @@ const std = @import("std");
 const zbench = @import("zbench");
 
 pub fn main() !void {
-    var stdout = std.fs.File.stdout().writer(&.{});
+    var stdout = std.fs.File.stdout().writerStreaming(&.{});
     var writer = &stdout.interface;
     try writer.print("\n\n{f}\n", .{try zbench.getSystemInfo()});
 }
