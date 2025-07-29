@@ -1,54 +1,76 @@
 const std = @import("std");
 const log = std.log.scoped(.zbench_platform_windows);
 
-pub fn getCpuName(allocator: std.mem.Allocator) ![]const u8 {
-    const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "name" });
+// Windows API structures and functions
+const DWORD = u32;
+const DWORDLONG = u64;
 
-    // Ensure stdout is long enough before slicing
-    if (stdout.len < 52) return error.InsufficientLength;
+const SYSTEM_INFO = extern struct {
+    wProcessorArchitecture: u16,
+    wReserved: u16,
+    dwPageSize: DWORD,
+    lpMinimumApplicationAddress: ?*anyopaque,
+    lpMaximumApplicationAddress: ?*anyopaque,
+    dwActiveProcessorMask: usize,
+    dwNumberOfProcessors: DWORD,
+    dwProcessorType: DWORD,
+    dwAllocationGranularity: DWORD,
+    wProcessorLevel: u16,
+    wProcessorRevision: u16,
+};
 
-    return stdout[45 .. stdout.len - 7];
-}
+const MEMORYSTATUSEX = extern struct {
+    dwLength: DWORD,
+    dwMemoryLoad: DWORD,
+    ullTotalPhys: DWORDLONG,
+    ullAvailPhys: DWORDLONG,
+    ullTotalPageFile: DWORDLONG,
+    ullAvailPageFile: DWORDLONG,
+    ullTotalVirtual: DWORDLONG,
+    ullAvailVirtual: DWORDLONG,
+    ullAvailExtendedVirtual: DWORDLONG,
+};
 
-pub fn getCpuCores(allocator: std.mem.Allocator) !u32 {
-    const stdout = try exec(allocator, &.{ "wmic", "cpu", "get", "NumberOfCores" });
+extern "kernel32" fn GetSystemInfo(*SYSTEM_INFO) callconv(std.os.windows.WINAPI) void;
+extern "kernel32" fn GlobalMemoryStatusEx(*MEMORYSTATUSEX) callconv(std.os.windows.WINAPI) std.os.windows.BOOL;
 
-    // Process the command output to extract the cores count
-    // WMIC output has headers and multiple lines, we need to find the first digit occurrence
-    var start: usize = 0;
-    while (start < stdout.len and !std.ascii.isDigit(stdout[start])) : (start += 1) {}
-    if (start == stdout.len) return error.InvalidData;
+pub fn getCpuName() ![128:0]u8 {
+    // Use the processor architecture info for now as a fallback
+    var system_info: SYSTEM_INFO = undefined;
+    GetSystemInfo(&system_info);
 
-    var end = start;
-    while (end < stdout.len and std.ascii.isDigit(stdout[end])) : (end += 1) {}
-
-    // Parse the extracted string to an integer
-    return std.fmt.parseInt(u32, stdout[start..end], 10) catch |err| {
-        log.err("Error parsing CPU cores count: {}\n", .{err});
-        return err;
+    const arch_name = switch (system_info.wProcessorArchitecture) {
+        0 => "Intel x86",
+        5 => "ARM",
+        6 => "Intel Itanium-based",
+        9 => "x64 (AMD or Intel)",
+        12 => "ARM64",
+        else => "Unknown Architecture",
     };
+
+    var result: [128:0]u8 = undefined;
+    const len = @min(result.len - 1, arch_name.len);
+    @memcpy(result[0..len], arch_name[0..len]);
+    result[len] = 0;
+
+    return result;
 }
 
-pub fn getTotalMemory(allocator: std.mem.Allocator) !u64 {
-    // Execute the WMIC command to get total physical memory
-    const output = try exec(allocator, &.{ "wmic", "ComputerSystem", "get", "TotalPhysicalMemory" });
-    defer allocator.free(output);
+pub fn getCpuCores() !u32 {
+    var system_info: SYSTEM_INFO = undefined;
+    GetSystemInfo(&system_info);
+    return system_info.dwNumberOfProcessors;
+}
 
-    // Tokenize the output to find the numeric value
-    var lines = std.mem.tokenizeSequence(u8, output, "\r\n");
-    _ = lines.next(); // Skip the first line, which is the header
+pub fn getTotalMemory() !u64 {
+    var memory_status: MEMORYSTATUSEX = undefined;
+    memory_status.dwLength = @sizeOf(MEMORYSTATUSEX);
 
-    // The second line contains the memory size in bytes
-    if (lines.next()) |line| {
-        // Trim spaces and parse the memory size
-        const memSizeStr = std.mem.trim(u8, line, " \r\n\t");
-        return std.fmt.parseInt(u64, memSizeStr, 10) catch |err| {
-            log.err("Error parsing total memory size: {}\n", .{err});
-            return err;
-        };
+    if (GlobalMemoryStatusEx(&memory_status) == 0) {
+        return error.CouldNotRetrieveMemorySize;
     }
 
-    return error.CouldNotRetrieveMemorySize;
+    return memory_status.ullTotalPhys;
 }
 
 fn exec(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
