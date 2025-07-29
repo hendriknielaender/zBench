@@ -10,7 +10,7 @@ fn execOld(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
     const result = try std.process.Child.run(.{ .allocator = allocator, .argv = args });
     defer allocator.free(result.stdout);
     if (result.stdout.len == 0) return error.EmptyOutput;
-    
+
     // Copy to avoid use-after-free
     const output = try allocator.dupe(u8, result.stdout[0 .. result.stdout.len - 1]);
     return output;
@@ -35,16 +35,16 @@ fn getSysctlByName(allocator: std.mem.Allocator, name: []const u8) ![]const u8 {
     var size: usize = 0;
     const name_z = try allocator.dupeZ(u8, name);
     defer allocator.free(name_z);
-    
+
     if (c.sysctlbyname(name_z.ptr, null, &size, null, 0) != 0) {
         return error.SysctlFailed;
     }
-    
+
     const buffer = try allocator.alloc(u8, size);
     if (c.sysctlbyname(name_z.ptr, buffer.ptr, &size, null, 0) != 0) {
         return error.SysctlFailed;
     }
-    
+
     if (size > 0 and buffer[size - 1] == 0) {
         return buffer[0 .. size - 1];
     }
@@ -117,14 +117,14 @@ fn getCpuCoresWindowsNew() !u32 {
 }
 
 fn getTotalMemoryWindowsNew() !u64 {
-    // Direct Windows API call - no memory allocation needed  
+    // Direct Windows API call - no memory allocation needed
     // Simulated for cross-platform benchmark
     return 17179869184; // typical value, represents zero allocation
 }
 
 fn benchmarkGetSystemInfoOld(allocator: std.mem.Allocator) void {
     if (builtin.os.tag != .macos) return;
-    
+
     // Use the provided allocator to show actual heap usage
     const cpu_name = getCpuNameOld(allocator) catch return;
     defer allocator.free(cpu_name);
@@ -137,11 +137,11 @@ fn benchmarkGetSystemInfoOld(allocator: std.mem.Allocator) void {
 fn benchmarkGetSystemInfoNew(allocator: std.mem.Allocator) void {
     _ = allocator;
     if (builtin.os.tag != .macos) return;
-    
+
     // Use minimal allocator for CPU name only
     var scratch: [128]u8 = undefined;
     var fbs = std.heap.FixedBufferAllocator.init(&scratch);
-    
+
     _ = getCpuNameNew(fbs.allocator()) catch return;
     _ = getCpuCoresNew() catch return;
     _ = getTotalMemoryNew() catch return;
@@ -150,12 +150,12 @@ fn benchmarkGetSystemInfoNew(allocator: std.mem.Allocator) void {
 fn benchmarkStackUsageOld(allocator: std.mem.Allocator) void {
     _ = allocator;
     if (builtin.os.tag != .macos) return;
-    
+
     // Demonstrate old stack usage (what would be needed to avoid OOM)
     var scratch1: [8192]u8 = undefined;
-    var scratch2: [8192]u8 = undefined; 
+    var scratch2: [8192]u8 = undefined;
     var scratch3: [8192]u8 = undefined;
-    
+
     // Simulate the stack allocation overhead
     std.mem.doNotOptimizeAway(&scratch1);
     std.mem.doNotOptimizeAway(&scratch2);
@@ -165,14 +165,15 @@ fn benchmarkStackUsageOld(allocator: std.mem.Allocator) void {
 fn benchmarkStackUsageNew(allocator: std.mem.Allocator) void {
     _ = allocator;
     if (builtin.os.tag != .macos) return;
-    
+
     // Demonstrate new minimal stack usage
     var scratch: [128]u8 = undefined;
     std.mem.doNotOptimizeAway(&scratch);
 }
 
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
+    var stdout = std.fs.File.stdout().writerStreaming(&.{});
+    var writer = &stdout.interface;
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 100,
     });
@@ -182,22 +183,22 @@ pub fn main() !void {
         if (deinit_status == .leak) std.debug.panic("Memory leak detected", .{});
     }
 
-    try stdout.writeAll("Memory Usage Comparison: System Info Retrieval\n");
-    try stdout.writeAll("==============================================\n\n");
+    try writer.writeAll("Memory Usage Comparison: System Info Retrieval\n");
+    try writer.writeAll("==============================================\n\n");
 
     try bench.add("Old Implementation (subprocess + heap)", benchmarkGetSystemInfoOld, .{
         .track_allocations = true,
     });
-    
+
     try bench.add("New Implementation (syscalls + stack)", benchmarkGetSystemInfoNew, .{
         .track_allocations = true,
     });
 
-    try stdout.writeAll("\nStack Usage Comparison:\n");
-    try stdout.writeAll("======================\n\n");
-    
+    try writer.writeAll("\nStack Usage Comparison:\n");
+    try writer.writeAll("======================\n\n");
+
     try bench.add("Old Stack Usage (24KB total)", benchmarkStackUsageOld, .{});
     try bench.add("New Stack Usage (128B total)", benchmarkStackUsageNew, .{});
 
-    try bench.run(stdout);
+    try bench.run(writer);
 }
