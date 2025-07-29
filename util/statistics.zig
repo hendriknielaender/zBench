@@ -3,6 +3,8 @@ const std = @import("std");
 /// Collect common statistical calculations together.
 pub fn Statistics(comptime T: type) type {
     return struct {
+        const Data = struct { []const u8, Self };
+
         total: T,
         mean: T,
         stddev: T,
@@ -56,13 +58,9 @@ pub fn Statistics(comptime T: type) type {
         }
 
         fn formatJSON(
-            data: struct { []const u8, Self },
-            comptime fmt: []const u8,
-            options: std.fmt.FormatOptions,
-            writer: anytype,
+            data: Data,
+            writer: *std.io.Writer,
         ) !void {
-            _ = fmt;
-            _ = options;
             try writer.print(
                 \\{{ "units": "{s}",
                 \\   "total": {d},
@@ -92,7 +90,7 @@ pub fn fmtJSON(
     comptime T: type,
     unit: []const u8,
     stats: Statistics(T),
-) std.fmt.Formatter(Statistics(T).formatJSON) {
+) std.fmt.Alt(Statistics(T).Data, Statistics(T).formatJSON) {
     return .{ .data = .{ unit, stats } };
 }
 

@@ -13,7 +13,8 @@ fn myBenchmark(alloc: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
+    var stdout = std.fs.File.stdout().writerStreaming(&.{});
+    var writer = &stdout.interface;
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{});
     defer {
@@ -31,7 +32,7 @@ pub fn main() !void {
         .track_allocations = true,
     });
 
-    try stdout.writeAll("[");
+    try writer.writeAll("[");
     var iter = try bench.iterator();
     var i: usize = 0;
     while (try iter.next()) |step| switch (step) {
@@ -39,9 +40,9 @@ pub fn main() !void {
         .result => |x| {
             defer x.deinit();
             defer i += 1;
-            if (0 < i) try stdout.writeAll(", ");
-            try x.writeJSON(gpa.allocator(), stdout);
+            if (0 < i) try writer.writeAll(", ");
+            try x.writeJSON(gpa.allocator(), writer);
         },
     };
-    try stdout.writeAll("]\n");
+    try writer.writeAll("]\n");
 }

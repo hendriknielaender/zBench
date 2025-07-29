@@ -8,12 +8,8 @@ fn FormatJSONArrayData(comptime T: type) type {
 
         fn format(
             data: Self,
-            comptime fmt: []const u8,
-            options: std.fmt.FormatOptions,
-            writer: anytype,
+            writer: *std.io.Writer,
         ) !void {
-            _ = fmt;
-            _ = options;
             try writer.writeAll("[");
             for (data.values, 0..) |x, i| {
                 if (0 < i) try writer.writeAll(", ");
@@ -27,7 +23,7 @@ fn FormatJSONArrayData(comptime T: type) type {
 pub fn fmtJSONArray(
     comptime T: type,
     values: []const T,
-) std.fmt.Formatter(FormatJSONArrayData(T).format) {
+) std.fmt.Alt(FormatJSONArrayData(T), FormatJSONArrayData(T).format) {
     const data = FormatJSONArrayData(T){ .values = values };
     return .{ .data = data };
 }
