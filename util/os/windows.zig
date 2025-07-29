@@ -31,8 +31,8 @@ const MEMORYSTATUSEX = extern struct {
     ullAvailExtendedVirtual: DWORDLONG,
 };
 
-extern "kernel32" fn GetSystemInfo(*SYSTEM_INFO) callconv(std.os.windows.WINAPI) void;
-extern "kernel32" fn GlobalMemoryStatusEx(*MEMORYSTATUSEX) callconv(std.os.windows.WINAPI) std.os.windows.BOOL;
+extern "kernel32" fn GetSystemInfo(*SYSTEM_INFO) callconv(.winapi) void;
+extern "kernel32" fn GlobalMemoryStatusEx(*MEMORYSTATUSEX) callconv(.winapi) std.os.windows.BOOL;
 
 pub fn getCpuName() ![128:0]u8 {
     // Use the processor architecture info for now as a fallback
