@@ -97,7 +97,7 @@ pub fn fmtJSON(
 test Statistics {
     const expectEqDeep = std.testing.expectEqualDeep;
     {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        var timings_ns = std.array_list.Managed(u64).init(std.testing.allocator);
         defer timings_ns.deinit();
         try expectEqDeep(Statistics(u64){
             .total = 0,
@@ -114,7 +114,7 @@ test Statistics {
     }
 
     {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        var timings_ns = std.array_list.Managed(u64).init(std.testing.allocator);
         defer timings_ns.deinit();
         try timings_ns.append(1);
         try expectEqDeep(Statistics(u64){
@@ -132,7 +132,7 @@ test Statistics {
     }
 
     {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        var timings_ns = std.array_list.Managed(u64).init(std.testing.allocator);
         defer timings_ns.deinit();
         try timings_ns.append(1);
         for (1..16) |i| try timings_ns.append(i);
@@ -151,7 +151,7 @@ test Statistics {
     }
 
     {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        var timings_ns = std.array_list.Managed(u64).init(std.testing.allocator);
         defer timings_ns.deinit();
         try timings_ns.append(1);
         for (1..101) |i| try timings_ns.append(i);
@@ -170,7 +170,7 @@ test Statistics {
     }
 
     {
-        var timings_ns = std.ArrayList(u64).init(std.testing.allocator);
+        var timings_ns = std.array_list.Managed(u64).init(std.testing.allocator);
         defer timings_ns.deinit();
         try timings_ns.append(1);
         for (1..101) |i| try timings_ns.append(i);
