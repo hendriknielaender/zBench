@@ -43,7 +43,9 @@ test "bench test" {
     try bench.add("My Benchmark", myBenchmark, .{});
     var buf: [1024]u8 = undefined;
     var stdout_= std.fs.File.stdout().writer(&buf);
-    try bench.run(&stdout.interface);
+    const writer = &stdout.interface;
+    try bench.run(writer);
+    try writer.flush();
 }
 ```
 
