@@ -28,8 +28,9 @@ For installation instructions, please refer to the [documentation](docs/install.
 Create a new benchmark function in your Zig code. This function takes a single argument of type `std.mem.Allocator` and runs the code you wish to benchmark.
 
 ```zig
-fn benchmarkMyFunction(allocator: std.mem.Allocator) void {
+fn myBenchmark(allocator: std.mem.Allocator) void {
     // Code to benchmark here
+    _ = allocator;
 }
 ```
 
@@ -40,7 +41,9 @@ test "bench test" {
     var bench = zbench.Benchmark.init(std.testing.allocator, .{});
     defer bench.deinit();
     try bench.add("My Benchmark", myBenchmark, .{});
-    try bench.run(std.io.getStdOut().writer());
+    var buf: [1024]u8 = undefined;
+    var stdout_= std.fs.File.stdout().writer(&buf);
+    try bench.run(&stdout.interface);
 }
 ```
 
