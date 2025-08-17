@@ -19,7 +19,7 @@ const MyBenchmark = struct {
 
 pub fn main() !void {
     var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    var writer = &stdout.interface;
+    const writer = &stdout.interface;
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();

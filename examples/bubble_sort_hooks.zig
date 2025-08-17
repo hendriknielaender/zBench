@@ -50,7 +50,7 @@ fn afterAll() void {
 
 pub fn main() !void {
     var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    var writer = &stdout.interface;
+    const writer = &stdout.interface;
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{});
     defer {
