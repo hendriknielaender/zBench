@@ -50,7 +50,7 @@ fn afterAll() void {
 
 pub fn main() !void {
     var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    var writer = &stdout.interface;
+    const writer = &stdout.interface;
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{});
     defer {
@@ -75,7 +75,7 @@ pub fn main() !void {
 
 const BenchmarkData = struct {
     rand: std.Random,
-    numbers: std.ArrayList(i32),
+    numbers: std.array_list.Managed(i32),
     prng: std.Random.DefaultPrng,
 
     pub fn init(self: *BenchmarkData, allocator: std.mem.Allocator, num: usize) !void {
@@ -85,7 +85,7 @@ const BenchmarkData = struct {
             break :blk seed;
         });
         self.rand = self.prng.random();
-        self.numbers = try std.ArrayList(i32).initCapacity(allocator, num);
+        self.numbers = try std.array_list.Managed(i32).initCapacity(allocator, num);
     }
 
     pub fn deinit(self: BenchmarkData) void {
