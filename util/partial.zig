@@ -1,10 +1,10 @@
 const std = @import("std");
 
 /// Make every field of the struct T nullable.
-pub fn Optional(comptime T: type) type {
+pub fn Partial(comptime T: type) type {
     const T_info = switch (@typeInfo(T)) {
         .@"struct" => |x| x,
-        else => @compileError("Optional only supports struct types for now"),
+        else => @compileError("Partial only supports struct types for now"),
     };
     var fields: [T_info.fields.len]std.builtin.Type.StructField = undefined;
     for (T_info.fields, &fields) |fi, *fo| {
@@ -19,10 +19,10 @@ pub fn Optional(comptime T: type) type {
 
 /// Take any non-null fields from x, and any null fields are taken from y
 /// instead.
-pub fn optional(comptime T: type, x: Optional(T), y: T) T {
+pub fn partial(comptime T: type, x: Partial(T), y: T) T {
     const T_info = switch (@typeInfo(T)) {
         .@"struct" => |info| info,
-        else => @compileError("Optional only supports struct types for now"),
+        else => @compileError("Partial only supports struct types for now"),
     };
     var t: T = undefined;
     inline for (T_info.fields) |f|
@@ -31,10 +31,10 @@ pub fn optional(comptime T: type, x: Optional(T), y: T) T {
     return t;
 }
 
-test "Optional" {
+test partial {
     const Foo = struct { abc: u8, xyz: u8 };
     const a: Foo = .{ .abc = 5, .xyz = 10 };
-    const b: Foo = optional(Foo, .{ .abc = 6 }, a);
+    const b: Foo = partial(Foo, .{ .abc = 6 }, a);
     try std.testing.expectEqual(@as(u8, 6), b.abc);
     try std.testing.expectEqual(@as(u8, 10), b.xyz);
 }
