@@ -39,7 +39,7 @@ fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
 
 fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const test_files = [_]struct { name: []const u8, path: []const u8 }{
-        .{ .name = "optional", .path = "util/optional.zig" },
+        .{ .name = "partial", .path = "util/partial.zig" },
         .{ .name = "platform", .path = "util/platform.zig" },
         .{ .name = "runner", .path = "util/runner.zig" },
         .{ .name = "statistics", .path = "util/statistics.zig" },

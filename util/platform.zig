@@ -92,7 +92,7 @@ fn getTotalMemory() !u64 {
     };
 }
 
-test "OsInfo" {
+test OsInfo {
     // No allocator and no free needed, it's stored statically.
     const sysinfo = try getSystemInfo();
     try std.testing.expect(sysinfo.platform.len != 0);

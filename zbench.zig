@@ -9,8 +9,8 @@ pub const statistics = @import("./util/statistics.zig");
 const Statistics = statistics.Statistics;
 const Color = @import("./util/color.zig").Color;
 const format = @import("./util/format.zig");
-const Optional = @import("./util/optional.zig").Optional;
-const optional = @import("./util/optional.zig").optional;
+const Partial = @import("./util/partial.zig").Partial;
+const partial = @import("./util/partial.zig").partial;
 const platform = @import("./util/platform.zig");
 const Runner = @import("./util/runner.zig");
 const Readings = Runner.Readings;
@@ -147,12 +147,12 @@ pub const Benchmark = struct {
         self: *Benchmark,
         name: []const u8,
         func: BenchFunc,
-        config: Optional(Config),
+        config: Partial(Config),
     ) !void {
         try self.benchmarks.append(self.allocator, Definition{
             .name = name,
             .defn = .{ .simple = func },
-            .config = optional(Config, config, self.common_config),
+            .config = partial(Config, config, self.common_config),
         });
     }
 
@@ -161,7 +161,7 @@ pub const Benchmark = struct {
         self: *Benchmark,
         name: []const u8,
         benchmark: anytype,
-        config: Optional(Config),
+        config: Partial(Config),
     ) !void {
         // Check the benchmark parameter is the proper type.
         const T: type = switch (@typeInfo(@TypeOf(benchmark))) {
@@ -182,7 +182,7 @@ pub const Benchmark = struct {
                 .func = @ptrCast(&T.run),
                 .context = @ptrCast(benchmark),
             } },
-            .config = optional(Config, config, self.common_config),
+            .config = partial(Config, config, self.common_config),
         });
     }
 

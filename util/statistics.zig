@@ -94,7 +94,7 @@ pub fn fmtJSON(
     return .{ .data = .{ unit, stats } };
 }
 
-test "Statistics" {
+test Statistics {
     const expectEqDeep = std.testing.expectEqualDeep;
     {
         var timings_ns = std.array_list.Managed(u64).init(std.testing.allocator);
