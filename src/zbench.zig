@@ -5,11 +5,11 @@
 const std = @import("std");
 
 // Export public API
-pub const Config = @import("config.zig").Config;
-pub const Hooks = @import("config.zig").Hooks;
-pub const Definition = @import("definition.zig").Definition;
-pub const BenchFunc = @import("definition.zig").BenchFunc;
-pub const ParameterisedFunc = @import("definition.zig").ParameterisedFunc;
+pub const Config = @import("benchmark.zig").Config;
+pub const Hooks = @import("benchmark.zig").Hooks;
+pub const Definition = @import("benchmark.zig").Definition;
+pub const BenchFunc = @import("benchmark.zig").BenchFunc;
+pub const ParameterisedFunc = @import("benchmark.zig").ParameterisedFunc;
 pub const Result = @import("result.zig").Result;
 pub const statistics = @import("statistics.zig");
 
