@@ -38,12 +38,16 @@ You can then run your benchmarks in a test:
 
 ```zig
 test "bench test" {
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const writer = &stdout_writer.interface;
+
     var bench = zbench.Benchmark.init(std.testing.allocator, .{});
     defer bench.deinit();
+    
     try bench.add("My Benchmark", myBenchmark, .{});
-    var buf: [1024]u8 = undefined;
-    var stdout_= std.fs.File.stdout().writer(&buf);
-    const writer = &stdout.interface;
+    
+    try writer.writeAll("\n");
     try bench.run(writer);
     try writer.flush();
 }

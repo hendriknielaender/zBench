@@ -20,8 +20,9 @@ fn myBenchmark(_: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    const writer = &stdout.interface;
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const writer = &stdout_writer.interface;
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
@@ -30,4 +31,5 @@ pub fn main() !void {
 
     try writer.writeAll("\n");
     try bench.run(writer);
+    try writer.flush();
 }

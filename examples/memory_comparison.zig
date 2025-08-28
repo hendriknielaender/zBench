@@ -172,8 +172,9 @@ fn benchmarkStackUsageNew(allocator: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    const writer = &stdout.interface;
+    var stdout_buffer: [2048]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const writer = &stdout_writer.interface;
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 100,
     });
@@ -201,4 +202,5 @@ pub fn main() !void {
     try bench.add("New Stack Usage (128B total)", benchmarkStackUsageNew, .{});
 
     try bench.run(writer);
+    try writer.flush();
 }
