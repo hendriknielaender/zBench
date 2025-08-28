@@ -2,12 +2,12 @@ const std = @import("std");
 const expectEq = std.testing.expectEqual;
 const expectEqSlices = std.testing.expectEqualSlices;
 
-pub const Error = @import("./runner/types.zig").Error;
-pub const Step = @import("./runner/types.zig").Step;
-pub const AllocationReading = @import("./runner/types.zig").AllocationReading;
-pub const AllocationReadings = @import("./runner/types.zig").AllocationReadings;
-pub const Reading = @import("./runner/types.zig").Reading;
-pub const Readings = @import("./runner/types.zig").Readings;
+pub const Error = @import("types.zig").Error;
+pub const Step = @import("types.zig").Step;
+pub const AllocationReading = @import("types.zig").AllocationReading;
+pub const AllocationReadings = @import("types.zig").AllocationReadings;
+pub const Reading = @import("types.zig").Reading;
+pub const Readings = @import("types.zig").Readings;
 
 const Runner = @This();
 
