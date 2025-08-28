@@ -36,4 +36,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: mlugg/setup-zig@v2
-      - run: zig fmt --check zbench.zig util/*.zig
+      - run: zig fmt --check src/*.zig
