@@ -25,7 +25,7 @@ Global registration adds hooks to each added benchmark.
 
 ```zig
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.Io.getStdOut().writer();
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{ .hooks = .{
         .before_all = beforeAllHook,
         .after_all = afterAllHook,
@@ -48,7 +48,7 @@ Hooks can also be included with the `add` and `addParam` methods.
 
 ```zig
 pub fn main() !void {
-    const stdout = std.io.getStdOut().writer();
+    const stdout = std.Io.getStdOut().writer();
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 

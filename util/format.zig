@@ -8,7 +8,7 @@ fn FormatJSONArrayData(comptime T: type) type {
 
         fn format(
             data: Self,
-            writer: *std.io.Writer,
+            writer: *std.Io.Writer,
         ) !void {
             try writer.writeAll("[");
             for (data.values, 0..) |x, i| {

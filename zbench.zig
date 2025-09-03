@@ -277,7 +277,7 @@ pub const Benchmark = struct {
     }
 
     /// Run all benchmarks and collect timing information.
-    pub fn run(self: Benchmark, writer: *std.io.Writer) !void {
+    pub fn run(self: Benchmark, writer: *std.Io.Writer) !void {
         // Most allocations for pretty printing will be the same size each time,
         // so using an arena should reduce the allocation load.
         var arena = std.heap.ArenaAllocator.init(self.allocator);
@@ -299,7 +299,7 @@ pub const Benchmark = struct {
 };
 
 /// Write the prettyPrint() header to a writer.
-pub fn prettyPrintHeader(writer: *std.io.Writer) !void {
+pub fn prettyPrintHeader(writer: *std.Io.Writer) !void {
     try writer.print(
         "{s:<22} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n",
         .{
@@ -338,12 +338,12 @@ pub const Result = struct {
     }
 
     /// Formats and prints the benchmark result in a human readable format.
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
+    /// writer: Type that has the associated method print (for example std.Io.getStdOut.writer())
     /// colors: Whether to pretty-print with ANSI colors or not.
     pub fn prettyPrint(
         self: Result,
         allocator: std.mem.Allocator,
-        writer: *std.io.Writer,
+        writer: *std.Io.Writer,
         colors: bool,
     ) !void {
         var buf: [128]u8 = undefined;
@@ -421,14 +421,14 @@ pub const Result = struct {
         }
     }
 
-    fn setColor(colors: bool, writer: *std.io.Writer, color: Color) !void {
+    fn setColor(colors: bool, writer: *std.Io.Writer, color: Color) !void {
         if (colors) try writer.writeAll(color.code());
     }
 
     pub fn writeJSON(
         self: Result,
         allocator: std.mem.Allocator,
-        writer: *std.io.Writer,
+        writer: *std.Io.Writer,
     ) !void {
         const timings_ns_stats =
             try Statistics(u64).init(allocator, self.readings.timings_ns);
