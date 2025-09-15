@@ -17,7 +17,7 @@ pub const OsInfo = struct {
 
     pub fn format(
         info: OsInfo,
-        writer: *std.io.Writer,
+        writer: *std.Io.Writer,
     ) !void {
         try writer.print(
             \\  Operating System: {s}
