@@ -32,7 +32,7 @@ pub fn main() !void {
     try zbench.prettyPrintHeader(writer);
 
     // Detect TTY configuration for color output
-    const tty_config = std.io.tty.Config.detect(std.fs.File.stdout());
+    const tty_config = std.Io.tty.Config.detect(std.fs.File.stdout());
 
     var iter = try bench.iterator();
     while (try iter.next()) |step| switch (step) {
