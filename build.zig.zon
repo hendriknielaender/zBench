@@ -1,11 +1,10 @@
 .{
     .name = .zbench,
     .fingerprint = 0xbb819b3cef5c3761,
-    .version = "0.11.1",
+    .version = "0.11.2",
     .dependencies = .{},
     .paths = .{
-        "zbench.zig",
-        "util", // anything from ./util
+        "src",
         // examples not listed / excluded
         "README.md",
         "LICENSE",
