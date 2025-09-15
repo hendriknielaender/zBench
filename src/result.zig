@@ -1,8 +1,8 @@
 const std = @import("std");
 const Statistics = @import("statistics.zig").Statistics;
-const format = @import("output/format.zig");
+const fmt = @import("output/fmt.zig");
 const statistics = @import("statistics.zig");
-const Color = @import("output/color.zig").Color;
+const Color = fmt.Color;
 const Runner = @import("runner.zig");
 const Readings = Runner.Readings;
 
@@ -127,9 +127,9 @@ pub const Result = struct {
                 .{
                     std.ascii.hexEscape(self.name, .lower),
                     statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                    format.fmtJSONArray(u64, self.readings.timings_ns),
+                    fmt.formatJSONArray(u64, self.readings.timings_ns),
                     statistics.fmtJSON(usize, "bytes", allocation_maxes_stats),
-                    format.fmtJSONArray(usize, allocs.maxes),
+                    fmt.formatJSONArray(usize, allocs.maxes),
                 },
             );
         } else {
@@ -140,7 +140,7 @@ pub const Result = struct {
                 .{
                     std.ascii.hexEscape(self.name, .lower),
                     statistics.fmtJSON(u64, "nanoseconds", timings_ns_stats),
-                    format.fmtJSONArray(u64, self.readings.timings_ns),
+                    fmt.formatJSONArray(u64, self.readings.timings_ns),
                 },
             );
         }

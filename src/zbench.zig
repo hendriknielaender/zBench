@@ -22,7 +22,8 @@ const ShufflingAllocator = @import("shuffling_allocator.zig").ShufflingAllocator
 const Partial = @import("partial.zig").Partial;
 const partial = @import("partial.zig").partial;
 const platform = @import("platform/platform.zig");
-const Color = @import("output/color.zig").Color;
+const fmt = @import("output/fmt.zig");
+const Color = fmt.Color;
 
 /// Benchmark manager, add your benchmark functions and run measure them.
 pub const Benchmark = struct {
