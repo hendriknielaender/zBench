@@ -59,7 +59,7 @@ pub fn Statistics(comptime T: type) type {
 
         fn formatJSON(
             data: Data,
-            writer: *std.io.Writer,
+            writer: *std.Io.Writer,
         ) !void {
             try writer.print(
                 \\{{ "units": "{s}",
