@@ -176,7 +176,7 @@ pub const Benchmark = struct {
     }
 
     /// Run all benchmarks and collect timing information.
-    pub fn run(self: Benchmark, writer: *std.io.Writer) !void {
+    pub fn run(self: Benchmark, writer: *std.Io.Writer) !void {
         // Most allocations for pretty printing will be the same size each time,
         // so using an arena should reduce the allocation load.
         var arena = std.heap.ArenaAllocator.init(self.allocator);
