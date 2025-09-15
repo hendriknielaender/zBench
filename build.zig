@@ -25,7 +25,7 @@ fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
         .linkage = .static,
         .name = "zbench",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("zbench.zig"),
+            .root_source_file = b.path("src/zbench.zig"),
             .target = target,
             .optimize = optimize,
         }),
@@ -39,11 +39,11 @@ fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.b
 
 fn setupTesting(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const test_files = [_]struct { name: []const u8, path: []const u8 }{
-        .{ .name = "partial", .path = "util/partial.zig" },
-        .{ .name = "platform", .path = "util/platform.zig" },
-        .{ .name = "runner", .path = "util/runner.zig" },
-        .{ .name = "statistics", .path = "util/statistics.zig" },
-        .{ .name = "zbench", .path = "zbench.zig" },
+        .{ .name = "partial", .path = "src/partial.zig" },
+        .{ .name = "platform", .path = "src/platform/platform.zig" },
+        .{ .name = "runner", .path = "src/runner.zig" },
+        .{ .name = "statistics", .path = "src/statistics.zig" },
+        .{ .name = "zbench", .path = "src/zbench.zig" },
     };
 
     const test_step = b.step("test", "Run library tests");
@@ -89,7 +89,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         });
         const install_example = b.addInstallArtifact(example, .{});
         const zbench_mod = b.addModule("zbench", .{
-            .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "zbench.zig" } },
+            .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/zbench.zig" } },
         });
         example.root_module.addImport("zbench", zbench_mod);
         example_step.dependOn(&example.step);

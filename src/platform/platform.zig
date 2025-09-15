@@ -1,9 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const lnx = @import("os/linux.zig");
-const mac = @import("os/osx.zig");
-const win = @import("os/windows.zig");
+const lnx = @import("linux.zig");
+const mac = @import("osx.zig");
+const win = @import("windows.zig");
 
 var cpu_name_buffer: [128]u8 = undefined;
 var osinfo: ?OsInfo = null;

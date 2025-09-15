@@ -1,5 +1,7 @@
 const std = @import("std");
 
+pub const Color = std.Io.tty.Color;
+
 fn FormatJSONArrayData(comptime T: type) type {
     return struct {
         values: []const T,
@@ -20,7 +22,7 @@ fn FormatJSONArrayData(comptime T: type) type {
     };
 }
 
-pub fn fmtJSONArray(
+pub fn formatJSONArray(
     comptime T: type,
     values: []const T,
 ) std.fmt.Alt(FormatJSONArrayData(T), FormatJSONArrayData(T).format) {
