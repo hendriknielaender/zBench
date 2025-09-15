@@ -22,12 +22,12 @@ pub const Result = struct {
     }
 
     /// Formats and prints the benchmark result in a human readable format.
-    /// writer: Type that has the associated method print (for example std.io.getStdOut.writer())
+    /// writer: Type that has the associated method print (for example std.Io.getStdOut.writer())
     /// tty_config: TTY configuration for color output.
     pub fn prettyPrint(
         self: Result,
         allocator: std.mem.Allocator,
-        writer: *std.io.Writer,
+        writer: *std.Io.Writer,
         tty_config: std.Io.tty.Config,
     ) !void {
         var buf: [128]u8 = undefined;
@@ -108,7 +108,7 @@ pub const Result = struct {
     pub fn writeJSON(
         self: Result,
         allocator: std.mem.Allocator,
-        writer: *std.io.Writer,
+        writer: *std.Io.Writer,
     ) !void {
         const timings_ns_stats =
             try Statistics(u64).init(allocator, self.readings.timings_ns);
