@@ -1,6 +1,6 @@
 const std = @import("std");
 const Statistics = @import("statistics.zig").Statistics;
-const fmt = @import("output/fmt.zig");
+const fmt = @import("fmt.zig");
 const statistics = @import("statistics.zig");
 const Color = std.Io.tty.Color;
 const Runner = @import("runner.zig");
