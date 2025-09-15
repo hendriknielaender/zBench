@@ -30,12 +30,16 @@ pub fn main() !void {
 
     try writer.writeAll("\n");
     try zbench.prettyPrintHeader(writer);
+
+    // Detect TTY configuration for color output
+    const tty_config = std.io.tty.Config.detect(std.fs.File.stdout());
+
     var iter = try bench.iterator();
     while (try iter.next()) |step| switch (step) {
         .progress => |_| {},
         .result => |x| {
             defer x.deinit();
-            try x.prettyPrint(allocator, writer, true);
+            try x.prettyPrint(allocator, writer, tty_config);
         },
     };
 }
