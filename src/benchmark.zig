@@ -1,7 +1,7 @@
 const std = @import("std");
 const Runner = @import("runner.zig");
-const TrackingAllocator = @import("tracking_allocator.zig");
-const ShufflingAllocator = @import("shuffling_allocator.zig").ShufflingAllocator;
+const TrackingAllocator = @import("allocators/tracking_allocator.zig");
+const ShufflingAllocator = @import("allocators/shuffling_allocator.zig").ShufflingAllocator;
 
 /// Hooks containing optional hooks for lifecycle events in benchmarking.
 /// Each field in this struct is a nullable function pointer.
