@@ -201,7 +201,7 @@ pub const Benchmark = struct {
 };
 
 /// Write the prettyPrint() header to a writer.
-pub fn prettyPrintHeader(writer: *std.io.Writer) !void {
+pub fn prettyPrintHeader(writer: *std.Io.Writer) !void {
     try writer.print(
         "{s:<22} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n",
         .{
