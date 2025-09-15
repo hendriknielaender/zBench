@@ -13,7 +13,7 @@ pub const Result = struct {
     name: []const u8,
     readings: Readings,
 
-    pub fn init(name: []const u8, readings: Runner.Readings) !Result {
+    pub fn init(name: []const u8, readings: Runner.Readings) Result {
         return Result{ .name = name, .readings = readings };
     }
 
