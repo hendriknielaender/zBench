@@ -148,7 +148,7 @@ pub const Benchmark = struct {
                 defer self.runner = null;
                 defer self.remaining = self.remaining[1..];
                 if (self.remaining[0].config.hooks.after_all) |hook| hook();
-                return Step{ .result = try Result.init(
+                return Step{ .result = Result.init(
                     self.remaining[0].name,
                     try runner.finish(),
                 ) };
