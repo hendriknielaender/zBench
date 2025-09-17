@@ -66,8 +66,8 @@ pub fn main() !void {
                 }
             }
         },
-        .result => |x| {
-            defer x.deinit();
+        .result => |r| {
+            defer r.deinit();
 
             if (benchmark_node) |*node| {
                 node.end();
@@ -79,7 +79,7 @@ pub fn main() !void {
             suite_node.setCompletedItems(completed_benchmarks);
 
             // Print the result
-            try x.prettyPrint(allocator, writer, tty_config);
+            try r.prettyPrint(allocator, writer, tty_config);
         },
     };
 
