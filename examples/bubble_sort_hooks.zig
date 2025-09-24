@@ -49,8 +49,7 @@ fn afterAll() void {
 }
 
 pub fn main() !void {
-    var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    const writer = &stdout.interface;
+    const stdout = std.fs.File.stdout();
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{});
     defer {
@@ -69,8 +68,7 @@ pub fn main() !void {
         },
     });
 
-    try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(stdout);
 }
 
 const BenchmarkData = struct {

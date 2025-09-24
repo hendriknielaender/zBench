@@ -19,8 +19,10 @@ fn myBenchmark2(_: std.mem.Allocator) void {
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
-    var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    const writer = &stdout.interface;
+    const stdout = std.fs.File.stdout();
+
+    var stdout_w = stdout.writerStreaming(&.{});
+    const writer = &stdout_w.interface;
 
     var bench = zbench.Benchmark.init(allocator, .{});
     defer bench.deinit();
@@ -32,7 +34,7 @@ pub fn main() !void {
     try zbench.prettyPrintHeader(writer);
 
     // Detect TTY configuration for color output
-    const tty_config = std.Io.tty.Config.detect(std.fs.File.stdout());
+    const tty_config = std.Io.tty.Config.detect(stdout);
 
     // Initialize the std.Progress api
     const progress = std.Progress.start(.{});

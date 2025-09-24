@@ -10,8 +10,10 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    const writer = &stdout.interface;
+    const stdout = std.fs.File.stdout();
+
+    var stdout_w = stdout.writerStreaming(&.{});
+    const writer = &stdout_w.interface;
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 64,
@@ -28,5 +30,5 @@ pub fn main() !void {
     });
 
     try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(stdout);
 }
