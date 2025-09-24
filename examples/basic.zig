@@ -9,14 +9,12 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    const writer = &stdout.interface;
+    const stdout = std.fs.File.stdout();
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
     try bench.add("My Benchmark", myBenchmark, .{});
 
-    try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(stdout);
 }

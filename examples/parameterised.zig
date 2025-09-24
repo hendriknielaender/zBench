@@ -18,8 +18,7 @@ const MyBenchmark = struct {
 };
 
 pub fn main() !void {
-    var stdout = std.fs.File.stdout().writerStreaming(&.{});
-    const writer = &stdout.interface;
+    const stdout = std.fs.File.stdout();
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
@@ -27,6 +26,5 @@ pub fn main() !void {
     try bench.addParam("My Benchmark 1", &MyBenchmark.init(100_000), .{});
     try bench.addParam("My Benchmark 2", &MyBenchmark.init(200_000), .{});
 
-    try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(stdout);
 }
