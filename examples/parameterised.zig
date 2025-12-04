@@ -8,7 +8,7 @@ const MyBenchmark = struct {
         return .{ .loops = loops };
     }
 
-    pub fn run(self: MyBenchmark, _: std.mem.Allocator) void {
+    pub fn run(self: *MyBenchmark, _: std.mem.Allocator) void {
         var result: usize = 0;
         for (0..self.loops) |i| {
             std.mem.doNotOptimizeAway(i);
