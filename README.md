@@ -51,6 +51,31 @@ test "bench test" {
 }
 ```
 
+### Executing the benchmark
+
+Given that your benchmark test is located at `src/bench.zig`, you can add this to the end of your build funciton in `build.zig`:
+
+```zig
+const target = b.standardTargetOptions(.{});
+const optimize = b.standardOptimizeOption(.{});
+const opts = .{ .target = target, .optimize = optimize };
+const zbench_module = b.dependency("zbench", opts).module("zbench");
+const bench_tests = b.addTest(.{
+    .root_module = bench_mod,
+    .name = "bench",
+});
+bench_tests.root_module.addImport("zbench", zbench_module);
+const run_bench_tests = b.addRunArtifact(bench_tests);
+const test_step = b.step("bench", "Run benchmark");
+test_step.dependOn(&run_bench_tests.step);
+```
+
+And then run the benchmark with:
+
+```shell
+zig build bench
+```
+
 ## Configuration
 
 To customize your benchmark runs, zBench provides a `Config` struct that allows you to specify several options:
