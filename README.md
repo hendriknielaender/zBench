@@ -37,15 +37,17 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
 You can then run your benchmarks in a test:
 
 ```zig
+const zbench = @import("zbench");
+const std = @import("std");
+
 test "bench test" {
     var bench = zbench.Benchmark.init(std.testing.allocator, .{});
     defer bench.deinit();
     try bench.add("My Benchmark", myBenchmark, .{});
-    var buf: [1024]u8 = undefined;
-    var stdout_= std.fs.File.stdout().writer(&buf);
-    const writer = &stdout.interface;
-    try bench.run(writer);
-    try writer.flush();
+    var buffer: [1024]u8 = undefined;
+    const bw = std.debug.lockStderrWriter(&buffer);
+    defer std.debug.unlockStderrWriter();
+    try bench.run(bw);
 }
 ```
 
