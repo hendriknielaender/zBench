@@ -15,8 +15,9 @@ const Readings = Runner.Readings;
 pub const Result = struct {
     name: []const u8,
     readings: Readings,
-    // TODO: make this configurable:
-    pprint_mode: std.Io.Terminal.Mode = if (is_windows) .windows_api else .escape_codes,
+    // TODO : make this configurable
+    // TODO : make this work on Windows
+    pprint_mode: std.Io.Terminal.Mode = .escape_codes,
 
     pub fn init(name: []const u8, readings: Runner.Readings) Result {
         return Result{ .name = name, .readings = readings };

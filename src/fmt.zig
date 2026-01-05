@@ -33,33 +33,37 @@ pub fn setColor(mode: Mode, writer: *std.Io.Writer, color: Color) SetColorError!
             };
             try writer.writeAll(color_string);
         },
-        .windows_api => |wa| {
-            const windows = std.os.windows;
-            const attributes: windows.WORD = switch (color) {
-                .black => 0,
-                .red => windows.FOREGROUND_RED,
-                .green => windows.FOREGROUND_GREEN,
-                .yellow => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN,
-                .blue => windows.FOREGROUND_BLUE,
-                .magenta => windows.FOREGROUND_RED | windows.FOREGROUND_BLUE,
-                .cyan => windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE,
-                .white => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE,
-                .bright_black => windows.FOREGROUND_INTENSITY,
-                .bright_red => windows.FOREGROUND_RED | windows.FOREGROUND_INTENSITY,
-                .bright_green => windows.FOREGROUND_GREEN | windows.FOREGROUND_INTENSITY,
-                .bright_yellow => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN | windows.FOREGROUND_INTENSITY,
-                .bright_blue => windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
-                .bright_magenta => windows.FOREGROUND_RED | windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
-                .bright_cyan => windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
-                .bright_white, .bold => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
-                // "dim" is not supported using basic character attributes, but let's still make it do *something*.
-                // This matches the old behavior of TTY.Color before the bright variants were added.
-                .dim => windows.FOREGROUND_INTENSITY,
-                .reset => wa.reset_attributes,
-            };
-            try writer.flush();
-            try windows.SetConsoleTextAttribute(wa.handle, attributes);
+        // TODO : Windows variant only works with Io.File...
+        else => {
+            return SetColorError;
         },
+        // .windows_api => |wa| {
+        //     const windows = std.os.windows;
+        //     const attributes: windows.WORD = switch (color) {
+        //         .black => 0,
+        //         .red => windows.FOREGROUND_RED,
+        //         .green => windows.FOREGROUND_GREEN,
+        //         .yellow => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN,
+        //         .blue => windows.FOREGROUND_BLUE,
+        //         .magenta => windows.FOREGROUND_RED | windows.FOREGROUND_BLUE,
+        //         .cyan => windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE,
+        //         .white => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE,
+        //         .bright_black => windows.FOREGROUND_INTENSITY,
+        //         .bright_red => windows.FOREGROUND_RED | windows.FOREGROUND_INTENSITY,
+        //         .bright_green => windows.FOREGROUND_GREEN | windows.FOREGROUND_INTENSITY,
+        //         .bright_yellow => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN | windows.FOREGROUND_INTENSITY,
+        //         .bright_blue => windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
+        //         .bright_magenta => windows.FOREGROUND_RED | windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
+        //         .bright_cyan => windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
+        //         .bright_white, .bold => windows.FOREGROUND_RED | windows.FOREGROUND_GREEN | windows.FOREGROUND_BLUE | windows.FOREGROUND_INTENSITY,
+        //         // "dim" is not supported using basic character attributes, but let's still make it do *something*.
+        //         // This matches the old behavior of TTY.Color before the bright variants were added.
+        //         .dim => windows.FOREGROUND_INTENSITY,
+        //         .reset => wa.reset_attributes,
+        //     };
+        //     try writer.flush();
+        //     try windows.SetConsoleTextAttribute(wa.handle, attributes);
+        // },
     }
 }
 fn FormatJSONArrayData(comptime T: type) type {
