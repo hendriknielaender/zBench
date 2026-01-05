@@ -1,9 +1,11 @@
 const std = @import("std");
+const builtin = @import("builtin");
+const is_windows = builtin.os.tag == .windows;
+
+const Color = std.Io.Terminal.Color;
 const Statistics = @import("statistics.zig").Statistics;
 const fmt = @import("fmt.zig");
 const statistics = @import("statistics.zig");
-// TODO :
-// const Color = std.Io.Terminal.Color;
 const Runner = @import("runner.zig");
 const Readings = Runner.Readings;
 
@@ -13,6 +15,8 @@ const Readings = Runner.Readings;
 pub const Result = struct {
     name: []const u8,
     readings: Readings,
+    // TODO: make this configurable:
+    pprint_mode: std.Io.Terminal.Mode = if (is_windows) .windows_api else .escape_codes,
 
     pub fn init(name: []const u8, readings: Runner.Readings) Result {
         return Result{ .name = name, .readings = readings };
@@ -28,8 +32,6 @@ pub const Result = struct {
     pub fn prettyPrint(
         self: Result,
         writer: *std.Io.Writer,
-        // TODO :
-        // tty_config: std.Io.tty.Config,
     ) !void {
         var buf: [128]u8 = undefined;
 
@@ -38,15 +40,13 @@ pub const Result = struct {
         const truncated_name = self.name[0..@min(22, self.name.len)];
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{truncated_name});
-        // TODO :
-        // try tty_config.setColor(writer, Color.cyan);
+        try fmt.setColor(self.pprint_mode, writer, Color.cyan);
         try writer.print("{d:<8} {D:<15}", .{
             self.readings.iterations,
             s.total,
         });
         // Mean + standard deviation
-        // // TODO :
-        // try tty_config.setColor(writer, Color.green);
+        try fmt.setColor(self.pprint_mode, writer, Color.green);
         try writer.print("{s:<23}", .{
             try std.fmt.bufPrint(&buf, "{D:.3} ± {D:.3}", .{
                 s.mean,
@@ -54,8 +54,7 @@ pub const Result = struct {
             }),
         });
         // Minimum and maximum
-        // // TODO :
-        // try tty_config.setColor(writer, Color.blue);
+        try fmt.setColor(self.pprint_mode, writer, Color.blue);
         try writer.print("{s:<29}", .{
             try std.fmt.bufPrint(&buf, "({D:.3} ... {D:.3})", .{
                 s.min,
@@ -63,16 +62,14 @@ pub const Result = struct {
             }),
         });
         // Percentiles
-        // // TODO :
-        // try tty_config.setColor(writer, Color.cyan);
+        try fmt.setColor(self.pprint_mode, writer, Color.cyan);
         try writer.print("{D:<10} {D:<10} {D:<10}", .{
             s.percentiles.p75,
             s.percentiles.p99,
             s.percentiles.p995,
         });
         // End of line
-        // // TODO :
-        // try tty_config.setColor(writer, Color.reset);
+        try fmt.setColor(self.pprint_mode, writer, Color.reset);
         try writer.writeAll("\n");
 
         if (self.readings.allocations) |allocs| {
@@ -83,8 +80,7 @@ pub const Result = struct {
             });
             try writer.print("{s:<46} ", .{name});
             // Mean + standard deviation
-            // TODO :
-            // try tty_config.setColor(writer, Color.green);
+            try fmt.setColor(self.pprint_mode, writer, Color.green);
             try writer.print("{s:<23}", .{
                 try std.fmt.bufPrint(&buf, "{Bi:.3} ± {Bi:.3}", .{
                     m.mean,
@@ -92,8 +88,7 @@ pub const Result = struct {
                 }),
             });
             // Minimum and maximum
-            // TODO :
-            // try tty_config.setColor(writer, Color.blue);
+            try fmt.setColor(self.pprint_mode, writer, Color.blue);
             try writer.print("{s:<29}", .{
                 try std.fmt.bufPrint(&buf, "({Bi:.3} ... {Bi:.3})", .{
                     m.min,
@@ -101,16 +96,14 @@ pub const Result = struct {
                 }),
             });
             // Percentiles
-            // TODO :
-            // try tty_config.setColor(writer, Color.cyan);
+            try fmt.setColor(self.pprint_mode, writer, Color.cyan);
             try writer.print("{Bi:<10.3} {Bi:<10.3} {Bi:<10.3}", .{
                 m.percentiles.p75,
                 m.percentiles.p99,
                 m.percentiles.p995,
             });
             // End of line
-            // TODO :
-            // try tty_config.setColor(writer, Color.reset);
+            try fmt.setColor(self.pprint_mode, writer, Color.reset);
             try writer.writeAll("\n");
         }
     }

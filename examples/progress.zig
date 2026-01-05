@@ -35,10 +35,6 @@ pub fn main() !void {
     try writer.writeAll("\n");
     try zbench.prettyPrintHeader(writer);
 
-    // TODO :
-    // Detect TTY configuration for color output
-    // const tty_config = std.Io.tty.Config.detect(std.fs.File.stdout());
-
     // Initialize the std.Progress api
     const progress = std.Progress.start(io, .{});
     defer progress.end();
@@ -83,9 +79,6 @@ pub fn main() !void {
             completed_benchmarks += 1;
             suite_node.setCompletedItems(completed_benchmarks);
 
-            // TODO :
-            // Print the result
-            // try r.prettyPrint(allocator, writer, tty_config);
             try r.prettyPrint(writer);
         },
     };

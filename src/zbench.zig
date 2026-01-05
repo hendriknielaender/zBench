@@ -176,27 +176,13 @@ pub const Benchmark = struct {
 
     /// Run all benchmarks and collect timing information.
     pub fn run(self: Benchmark, writer: *std.Io.Writer) !void {
-        // Most allocations for pretty printing will be the same size each time,
-        // so using an arena should reduce the allocation load.
-        var arena = std.heap.ArenaAllocator.init(self.allocator);
-        defer arena.deinit();
-
         try prettyPrintHeader(writer);
-
-        // TODO :
-        // Detect TTY configuration for color output
-        // const tty_config = std.Io.tty.Config.detect(std.fs.File.stdout());
-
         var iter = try self.iterator();
         while (try iter.next()) |step| switch (step) {
             .progress => |_| {},
             .result => |x| {
                 defer x.deinit();
-
-                // TODO :
-                // try x.prettyPrint(arena.allocator(), writer, tty_config);
                 try x.prettyPrint(writer);
-                _ = arena.reset(.retain_capacity);
             },
         };
     }
