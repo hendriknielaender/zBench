@@ -65,17 +65,17 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
     const example_step = b.step("examples", "Build examples");
     const example_names = [_][]const u8{
         "basic",
-        "bubble_sort",
-        "bubble_sort_hooks",
-        "hooks",
-        "json",
-        "memory_tracking",
-        "memory_comparison",
-        "parameterised",
-        "progress",
-        "shuffling_allocator",
-        "sleep",
-        "systeminfo",
+        // "bubble_sort",
+        // "bubble_sort_hooks",
+        // "hooks",
+        // "json",
+        // "memory_tracking",
+        // "memory_comparison",
+        // "parameterised",
+        // "progress",
+        // "shuffling_allocator",
+        // "sleep",
+        // "systeminfo",
     };
 
     for (example_names) |example_name| {
