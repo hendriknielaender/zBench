@@ -15,8 +15,8 @@ const Readings = Runner.Readings;
 pub const Result = struct {
     name: []const u8,
     readings: Readings,
-    // TODO : make this configurable
-    // TODO : make this work on Windows
+    // TODO : make this configurable (#137)
+    // TODO : make this work on Windows (#137)
     pprint_mode: std.Io.Terminal.Mode = .escape_codes,
 
     pub fn init(name: []const u8, readings: Runner.Readings) Result {
