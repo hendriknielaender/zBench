@@ -175,8 +175,9 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    var stdout: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(io, &.{});
-    const writer = &stdout.interface;
+    const stdout: std.Io.File = .stdout();
+    var w: std.Io.File.Writer = stdout.writerStreaming(io, &.{});
+    const writer: *std.Io.Writer = &w.interface;
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 100,
@@ -204,5 +205,5 @@ pub fn main() !void {
     try bench.add("Old Stack Usage (24KB total)", benchmarkStackUsageOld, .{});
     try bench.add("New Stack Usage (128B total)", benchmarkStackUsageNew, .{});
 
-    try bench.run(writer);
+    try bench.run(io, stdout);
 }

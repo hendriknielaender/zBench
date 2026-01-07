@@ -23,8 +23,7 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    var stdout: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(io, &.{});
-    const writer = &stdout.interface;
+    const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(allocator, .{});
     defer bench.deinit();
@@ -32,12 +31,7 @@ pub fn main() !void {
     try bench.add("My Benchmark 1", myBenchmark1, .{});
     try bench.add("My Benchmark 2", myBenchmark2, .{});
 
-    try writer.writeAll("\n");
-    try zbench.prettyPrintHeader(writer);
-
-    // TODO : #137
-    // Detect TTY configuration for color output
-    // const tty_config = std.Io.tty.Config.detect(std.fs.File.stdout());
+    try zbench.prettyPrintHeader(io, stdout);
 
     // Initialize the std.Progress api
     const progress = std.Progress.start(io, .{});
@@ -83,10 +77,7 @@ pub fn main() !void {
             completed_benchmarks += 1;
             suite_node.setCompletedItems(completed_benchmarks);
 
-            // TODO : #137
-            // Print the result
-            // try r.prettyPrint(allocator, writer, tty_config);
-            try r.prettyPrint(writer);
+            try r.prettyPrint(io, stdout);
         },
     };
 

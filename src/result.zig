@@ -32,8 +32,8 @@ pub const Result = struct {
     ) !void {
         var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
         const writer: *std.Io.Writer = &w.interface;
-        const terminal_mode = try Terminal.Mode.detect(io, file, false, false);
-        const terminal = Terminal{ .writer = writer, .mode = terminal_mode };
+        const terminal_mode: Terminal.Mode = try .detect(io, file, false, false);
+        const terminal: Terminal = .{ .writer = writer, .mode = terminal_mode };
 
         var buf: [128]u8 = undefined;
 

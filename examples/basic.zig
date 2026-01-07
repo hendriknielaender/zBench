@@ -12,7 +12,7 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    const stdout: std.Io.File = std.Io.File.stdout();
+    const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();

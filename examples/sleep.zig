@@ -12,13 +12,11 @@ fn sleepBenchmark(_: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    var stdout: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(io, &.{});
-    const writer = &stdout.interface;
+    const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
     try bench.add("Sleep Benchmark", sleepBenchmark, .{});
 
-    try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(io, stdout);
 }
