@@ -2,7 +2,7 @@
     .name = .zbench,
     .fingerprint = 0xbb819b3cef5c3761,
     .version = "0.11.2",
-    .dependencies = .{},
+    .minimum_zig_version = "0.16.0-dev.1976+8e091047b",
     .paths = .{
         "src",
         // examples not listed / excluded
