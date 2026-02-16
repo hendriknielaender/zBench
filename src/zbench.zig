@@ -179,7 +179,7 @@ pub const Benchmark = struct {
         try prettyPrintHeader(io, file);
         var iter = try self.iterator();
         while (try iter.next()) |step| switch (step) {
-            .progress => |_| {},
+            .progress => {},
             .result => |x| {
                 defer x.deinit();
                 try x.prettyPrint(io, file);

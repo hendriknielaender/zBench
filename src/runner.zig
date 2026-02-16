@@ -154,7 +154,7 @@ pub const Status = struct {
 
 pub fn status(self: Runner) Status {
     return switch (self.state) {
-        .preparing => |_| Status{
+        .preparing => Status{
             .total_runs = 0,
             .completed_runs = 0,
         },
