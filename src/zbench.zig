@@ -111,7 +111,7 @@ pub const Benchmark = struct {
         };
 
         /// Get the next response.
-        pub fn next(self: *Iterator) !?Step {
+        pub fn next(self: *Iterator, io: std.Io) !?Step {
             if (self.remaining.len == 0) return null;
 
             var runner: *Runner = if (self.runner) |*r| r else blk: {
@@ -129,7 +129,7 @@ pub const Benchmark = struct {
 
             const runner_step = blk: {
                 errdefer self.abort();
-                const reading = try self.remaining[0].run(self.allocator);
+                const reading = try self.remaining[0].run(io, self.allocator);
                 break :blk try runner.next(reading);
             };
             if (runner_step) |_| {
@@ -178,7 +178,7 @@ pub const Benchmark = struct {
     pub fn run(self: Benchmark, io: std.Io, file: std.Io.File) !void {
         try prettyPrintHeader(io, file);
         var iter = try self.iterator();
-        while (try iter.next()) |step| switch (step) {
+        while (try iter.next(io)) |step| switch (step) {
             .progress => {},
             .result => |x| {
                 defer x.deinit();

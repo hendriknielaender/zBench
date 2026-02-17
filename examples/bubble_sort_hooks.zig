@@ -54,11 +54,7 @@ const BenchmarkData = struct {
     prng: std.Random.DefaultPrng,
 
     pub fn init(self: *BenchmarkData, allocator: std.mem.Allocator, num: usize) !void {
-        self.prng = std.Random.DefaultPrng.init(blk: {
-            var seed: u64 = undefined;
-            std.posix.getrandom(std.mem.asBytes(&seed)) catch unreachable;
-            break :blk seed;
-        });
+        self.prng = std.Random.DefaultPrng.init(42);
         self.rand = self.prng.random();
         self.numbers = try std.array_list.Managed(i32).initCapacity(allocator, num);
     }

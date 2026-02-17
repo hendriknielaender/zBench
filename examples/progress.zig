@@ -46,7 +46,7 @@ pub fn main() !void {
     var benchmark_node: ?std.Progress.Node = null;
     var completed_benchmarks: usize = 0;
 
-    while (try iter.next()) |step| switch (step) {
+    while (try iter.next(io)) |step| switch (step) {
         .progress => |p| {
             if (p.total_runs > 0) {
                 // Check if we've moved to a new benchmark

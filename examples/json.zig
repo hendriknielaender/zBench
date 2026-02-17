@@ -39,8 +39,8 @@ pub fn main() !void {
     try writer.writeAll("[");
     var iter = try bench.iterator();
     var i: usize = 0;
-    while (try iter.next()) |step| switch (step) {
-        .progress => |_| {},
+    while (try iter.next(io)) |step| switch (step) {
+        .progress => {},
         .result => |x| {
             defer x.deinit();
             defer i += 1;
