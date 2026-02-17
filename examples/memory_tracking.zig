@@ -12,7 +12,6 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
 pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
-
     const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
@@ -25,9 +24,6 @@ pub fn main() !void {
     }
 
     try bench.add("My Benchmark 1", myBenchmark, .{});
-    try bench.add("My Benchmark 2", myBenchmark, .{
-        .track_allocations = true,
-    });
-
+    try bench.add("My Benchmark 2", myBenchmark, .{ .track_allocations = true });
     try bench.run(io, stdout);
 }

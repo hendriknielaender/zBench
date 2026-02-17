@@ -18,20 +18,21 @@ fn myBenchmark2(_: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
-
     const stdout: std.Io.File = .stdout();
 
-    var bench = zbench.Benchmark.init(allocator, .{});
+    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
     try bench.add("My Benchmark 1", myBenchmark1, .{});
     try bench.add("My Benchmark 2", myBenchmark2, .{});
 
-    try zbench.prettyPrintHeader(io, stdout);
+    try zbench.prettyPrintHeader(
+        io,
+        stdout,
+        "{s:<20} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+    );
 
     // Initialize the std.Progress api
     const progress = std.Progress.start(io, .{});
@@ -54,7 +55,6 @@ pub fn main() !void {
                     if (benchmark_node) |*node| {
                         node.end();
                     }
-
                     current_benchmark = p.current_name;
                     benchmark_node = suite_node.start(p.current_name, p.total_runs);
                 }
@@ -77,7 +77,7 @@ pub fn main() !void {
             completed_benchmarks += 1;
             suite_node.setCompletedItems(completed_benchmarks);
 
-            try r.prettyPrint(io, stdout);
+            try r.prettyPrint(io, stdout, "{s:<20} ");
         },
     };
 

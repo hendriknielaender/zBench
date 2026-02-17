@@ -50,7 +50,7 @@ fn afterAll() void {
 
 const BenchmarkData = struct {
     rand: std.Random,
-    numbers: std.array_list.Managed(i32),
+    numbers: std.array_list.Managed(i32), // TODO : std.array_list.Managed is deprecated
     prng: std.Random.DefaultPrng,
 
     pub fn init(self: *BenchmarkData, allocator: std.mem.Allocator, num: usize) !void {
@@ -77,7 +77,6 @@ const BenchmarkData = struct {
 pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
-
     const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{});
@@ -96,6 +95,5 @@ pub fn main() !void {
             .after_each = afterEach,
         },
     });
-
     try bench.run(io, stdout);
 }

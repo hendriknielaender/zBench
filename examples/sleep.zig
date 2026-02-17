@@ -2,6 +2,7 @@ const std = @import("std");
 const zbench = @import("zbench");
 const log = std.log.scoped(.zbench_example_sleep);
 
+// using a global io here so we can use it in the benchmarked function implicitly
 var threaded: std.Io.Threaded = .init_single_threaded;
 const io = threaded.io();
 
@@ -16,7 +17,7 @@ pub fn main() !void {
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
-    try bench.add("Sleep Benchmark", sleepBenchmark, .{});
 
+    try bench.add("Sleep Benchmark", sleepBenchmark, .{});
     try bench.run(io, stdout);
 }
