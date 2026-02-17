@@ -16,8 +16,9 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    var stdout: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(io, &.{});
-    const writer = &stdout.interface;
+    const stdout: std.Io.File = .stdout();
+    var w: std.Io.File.Writer = stdout.writerStreaming(io, &.{});
+    const writer: *std.Io.Writer = &w.interface;
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{});
     defer {

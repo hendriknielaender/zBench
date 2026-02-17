@@ -13,8 +13,7 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    var stdout: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(io, &.{});
-    const writer = &stdout.interface;
+    const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 64,
@@ -30,6 +29,5 @@ pub fn main() !void {
         .track_allocations = true,
     });
 
-    try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(io, stdout);
 }

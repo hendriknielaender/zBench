@@ -1,9 +1,9 @@
 const std = @import("std");
+const Terminal = std.Io.Terminal;
+const Color = Terminal.Color;
 const Statistics = @import("statistics.zig").Statistics;
 const fmt = @import("fmt.zig");
 const statistics = @import("statistics.zig");
-// TODO : #137
-// const Color = std.Io.Terminal.Color;
 const Runner = @import("runner.zig");
 const Readings = Runner.Readings;
 
@@ -27,10 +27,14 @@ pub const Result = struct {
     /// tty_config: TTY configuration for color output.
     pub fn prettyPrint(
         self: Result,
-        writer: *std.Io.Writer,
-        // TODO : #137
-        // tty_config: std.Io.tty.Config,
+        io: std.Io,
+        file: std.Io.File,
     ) !void {
+        var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
+        const writer: *std.Io.Writer = &w.interface;
+        const terminal_mode: Terminal.Mode = try .detect(io, file, false, false);
+        const terminal: Terminal = .{ .writer = writer, .mode = terminal_mode };
+
         var buf: [128]u8 = undefined;
 
         const timings_ns = self.readings.timings_ns;
@@ -38,15 +42,13 @@ pub const Result = struct {
         const truncated_name = self.name[0..@min(22, self.name.len)];
         // Benchmark name, number of iterations, and total time
         try writer.print("{s:<22} ", .{truncated_name});
-        // TODO :
-        // try tty_config.setColor(writer, Color.cyan);
+        try terminal.setColor(Color.cyan);
         try writer.print("{d:<8} {D:<15}", .{
             self.readings.iterations,
             s.total,
         });
         // Mean + standard deviation
-        // TODO : #137
-        // try tty_config.setColor(writer, Color.green);
+        try terminal.setColor(Color.green);
         try writer.print("{s:<23}", .{
             try std.fmt.bufPrint(&buf, "{D:.3} ± {D:.3}", .{
                 s.mean,
@@ -54,8 +56,7 @@ pub const Result = struct {
             }),
         });
         // Minimum and maximum
-        // TODO :
-        // try tty_config.setColor(writer, Color.blue);
+        try terminal.setColor(Color.green);
         try writer.print("{s:<29}", .{
             try std.fmt.bufPrint(&buf, "({D:.3} ... {D:.3})", .{
                 s.min,
@@ -63,16 +64,14 @@ pub const Result = struct {
             }),
         });
         // Percentiles
-        // TODO : #137
-        // try tty_config.setColor(writer, Color.cyan);
+        try terminal.setColor(Color.cyan);
         try writer.print("{D:<10} {D:<10} {D:<10}", .{
             s.percentiles.p75,
             s.percentiles.p99,
             s.percentiles.p995,
         });
         // End of line
-        // TODO : #137
-        // try tty_config.setColor(writer, Color.reset);
+        try terminal.setColor(Color.reset);
         try writer.writeAll("\n");
 
         if (self.readings.allocations) |allocs| {
@@ -83,8 +82,7 @@ pub const Result = struct {
             });
             try writer.print("{s:<46} ", .{name});
             // Mean + standard deviation
-            // TODO : #137
-            // try tty_config.setColor(writer, Color.green);
+            try terminal.setColor(Color.green);
             try writer.print("{s:<23}", .{
                 try std.fmt.bufPrint(&buf, "{Bi:.3} ± {Bi:.3}", .{
                     m.mean,
@@ -92,8 +90,7 @@ pub const Result = struct {
                 }),
             });
             // Minimum and maximum
-            // TODO : #137
-            // try tty_config.setColor(writer, Color.blue);
+            try terminal.setColor(Color.blue);
             try writer.print("{s:<29}", .{
                 try std.fmt.bufPrint(&buf, "({Bi:.3} ... {Bi:.3})", .{
                     m.min,
@@ -101,16 +98,14 @@ pub const Result = struct {
                 }),
             });
             // Percentiles
-            // TODO : #137
-            // try tty_config.setColor(writer, Color.cyan);
+            try terminal.setColor(Color.cyan);
             try writer.print("{Bi:<10.3} {Bi:<10.3} {Bi:<10.3}", .{
                 m.percentiles.p75,
                 m.percentiles.p99,
                 m.percentiles.p995,
             });
             // End of line
-            // TODO : #137
-            // try tty_config.setColor(writer, Color.reset);
+            try terminal.setColor(Color.reset);
             try writer.writeAll("\n");
         }
     }

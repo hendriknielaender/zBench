@@ -1,7 +1,7 @@
 const std = @import("std");
 const zbench = @import("zbench");
 
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+var gpa = std.heap.DebugAllocator(.{}){};
 
 fn myBenchmark(allocator: std.mem.Allocator) void {
     for (0..2000) |_| {
@@ -14,8 +14,7 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    var stdout: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(io, &.{});
-    const writer = &stdout.interface;
+    const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(gpa.allocator(), .{
         .iterations = 64,
@@ -41,6 +40,5 @@ pub fn main() !void {
         .use_shuffling_allocator = true,
     });
 
-    try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(io, stdout);
 }

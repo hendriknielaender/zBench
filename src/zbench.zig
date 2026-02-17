@@ -175,35 +175,23 @@ pub const Benchmark = struct {
     }
 
     /// Run all benchmarks and collect timing information.
-    pub fn run(self: Benchmark, writer: *std.Io.Writer) !void {
-        // Most allocations for pretty printing will be the same size each time,
-        // so using an arena should reduce the allocation load.
-        var arena = std.heap.ArenaAllocator.init(self.allocator);
-        defer arena.deinit();
-
-        try prettyPrintHeader(writer);
-
-        // TODO : #137
-        // Detect TTY configuration for color output
-        // const tty_config = std.Io.tty.Config.detect(std.fs.File.stdout());
-
+    pub fn run(self: Benchmark, io: std.Io, file: std.Io.File) !void {
+        try prettyPrintHeader(io, file);
         var iter = try self.iterator();
         while (try iter.next()) |step| switch (step) {
-            .progress => |_| {},
+            .progress => {},
             .result => |x| {
                 defer x.deinit();
-
-                // TODO : #137
-                // try x.prettyPrint(arena.allocator(), writer, tty_config);
-                try x.prettyPrint(writer);
-                _ = arena.reset(.retain_capacity);
+                try x.prettyPrint(io, file);
             },
         };
     }
 };
 
 /// Write the prettyPrint() header to a writer.
-pub fn prettyPrintHeader(writer: *std.Io.Writer) !void {
+pub fn prettyPrintHeader(io: std.Io, file: std.Io.File) !void {
+    var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
+    const writer: *std.Io.Writer = &w.interface;
     try writer.print(
         "{s:<22} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n",
         .{

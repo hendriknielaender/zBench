@@ -21,8 +21,7 @@ pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
 
-    var stdout: std.Io.File.Writer = std.Io.File.stdout().writerStreaming(io, &.{});
-    const writer = &stdout.interface;
+    const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
@@ -30,6 +29,5 @@ pub fn main() !void {
     try bench.addParam("My Benchmark 1", &MyBenchmark.init(100_000), .{});
     try bench.addParam("My Benchmark 2", &MyBenchmark.init(200_000), .{});
 
-    try writer.writeAll("\n");
-    try bench.run(writer);
+    try bench.run(io, stdout);
 }
