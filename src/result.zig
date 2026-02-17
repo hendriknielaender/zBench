@@ -29,6 +29,7 @@ pub const Result = struct {
         self: Result,
         io: std.Io,
         file: std.Io.File,
+        comptime name_fmt: []const u8,
     ) !void {
         var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
         const writer: *std.Io.Writer = &w.interface;
@@ -41,7 +42,7 @@ pub const Result = struct {
         const s = try Statistics(u64).init(timings_ns);
         const truncated_name = self.name[0..@min(22, self.name.len)];
         // Benchmark name, number of iterations, and total time
-        try writer.print("{s:<22} ", .{truncated_name});
+        try writer.print(name_fmt, .{truncated_name});
         try terminal.setColor(Color.cyan);
         try writer.print("{d:<8} {D:<15}", .{
             self.readings.iterations,

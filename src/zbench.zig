@@ -176,24 +176,29 @@ pub const Benchmark = struct {
 
     /// Run all benchmarks and collect timing information.
     pub fn run(self: Benchmark, io: std.Io, file: std.Io.File) !void {
-        try prettyPrintHeader(io, file);
+        // TODO : benchmark name length is comptime-known, so we should determine
+        //        the format considering this (see #130)
+        const header_fmt = "{s:<22} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n";
+        const name_fmt = "{s:<22} ";
+
+        try prettyPrintHeader(io, file, header_fmt);
         var iter = try self.iterator();
         while (try iter.next(io)) |step| switch (step) {
             .progress => {},
             .result => |x| {
                 defer x.deinit();
-                try x.prettyPrint(io, file);
+                try x.prettyPrint(io, file, name_fmt);
             },
         };
     }
 };
 
 /// Write the prettyPrint() header to a writer.
-pub fn prettyPrintHeader(io: std.Io, file: std.Io.File) !void {
+pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, comptime header_fmt: []const u8) !void {
     var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
     const writer: *std.Io.Writer = &w.interface;
     try writer.print(
-        "{s:<22} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        header_fmt,
         .{
             "benchmark",
             "runs",
