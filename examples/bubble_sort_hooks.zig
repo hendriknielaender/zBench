@@ -45,22 +45,22 @@ fn afterEach() void {
 }
 
 fn afterAll() void {
-    benchmark_data.deinit();
+    benchmark_data.deinit(gpa.allocator());
 }
 
 const BenchmarkData = struct {
     rand: std.Random,
-    numbers: std.array_list.Managed(i32), // TODO : std.array_list.Managed is deprecated
+    numbers: std.array_list.Aligned(i32, null),
     prng: std.Random.DefaultPrng,
 
     pub fn init(self: *BenchmarkData, allocator: std.mem.Allocator, num: usize) !void {
         self.prng = std.Random.DefaultPrng.init(42);
         self.rand = self.prng.random();
-        self.numbers = try std.array_list.Managed(i32).initCapacity(allocator, num);
+        self.numbers = try std.array_list.Aligned(i32, null).initCapacity(allocator, num);
     }
 
-    pub fn deinit(self: BenchmarkData) void {
-        self.numbers.deinit();
+    pub fn deinit(self: *BenchmarkData, allocator: std.mem.Allocator) void {
+        self.numbers.deinit(allocator);
     }
 
     pub fn fill(self: *BenchmarkData) void {
