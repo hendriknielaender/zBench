@@ -1,4 +1,6 @@
 const std = @import("std");
+const assert = std.debug.assert;
+const Timestamp = std.Io.Timestamp;
 const Runner = @import("runner.zig");
 const TrackingAllocator = @import("allocators/tracking_allocator.zig");
 const ShufflingAllocator = @import("allocators/shuffling_allocator.zig").ShufflingAllocator;
@@ -68,40 +70,48 @@ pub const Definition = struct {
 
     /// Run and time a benchmark function once, as well as running before and
     /// after hooks.
-    pub fn run(self: Definition, allocator: std.mem.Allocator) !Runner.Reading {
+    pub fn run(
+        self: Definition,
+        io: std.Io,
+        allocator: std.mem.Allocator,
+    ) !Runner.Reading {
         if (self.config.use_shuffling_allocator) {
-            var shuffle_allocator = ShufflingAllocator.create(allocator, 0);
+            var shuffle_allocator = ShufflingAllocator.create(io, allocator, 0);
             defer shuffle_allocator.deinit();
 
             if (self.config.track_allocations) {
                 var tracking_allocator = TrackingAllocator.init(shuffle_allocator.allocator());
-                return self.runImpl(tracking_allocator.allocator(), &tracking_allocator);
+                return self.runImpl(io, tracking_allocator.allocator(), &tracking_allocator);
             } else {
-                return self.runImpl(shuffle_allocator.allocator(), null);
+                return self.runImpl(io, shuffle_allocator.allocator(), null);
             }
         } else if (self.config.track_allocations) {
             var tracking_allocator = TrackingAllocator.init(allocator);
-            return self.runImpl(tracking_allocator.allocator(), &tracking_allocator);
+            return self.runImpl(io, tracking_allocator.allocator(), &tracking_allocator);
         }
 
-        return self.runImpl(allocator, null);
+        return self.runImpl(io, allocator, null);
     }
 
     fn runImpl(
         self: Definition,
+        io: std.Io,
         allocator: std.mem.Allocator,
         tracking: ?*TrackingAllocator,
     ) !Runner.Reading {
         if (self.config.hooks.before_each) |hook| hook();
         defer if (self.config.hooks.after_each) |hook| hook();
 
-        var t = try std.time.Timer.start();
+        const t0 = Timestamp.now(io, .awake);
         switch (self.defn) {
             .simple => |func| func(allocator),
             .parameterised => |x| x.func(@ptrCast(x.context), allocator),
         }
+        const t1_ns: i96 = t0.untilNow(io, .awake).toNanoseconds();
+        assert(t1_ns > 0);
+
         return Runner.Reading{
-            .timing_ns = t.read(),
+            .timing_ns = @intCast(t1_ns),
             .allocation = if (tracking) |trk| Runner.AllocationReading{
                 .max = trk.maxAllocated(),
                 .count = trk.allocationCount(),

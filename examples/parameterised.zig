@@ -20,7 +20,6 @@ const MyBenchmark = struct {
 pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
-
     const stdout: std.Io.File = .stdout();
 
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
@@ -28,6 +27,5 @@ pub fn main() !void {
 
     try bench.addParam("My Benchmark 1", &MyBenchmark.init(100_000), .{});
     try bench.addParam("My Benchmark 2", &MyBenchmark.init(200_000), .{});
-
     try bench.run(io, stdout);
 }

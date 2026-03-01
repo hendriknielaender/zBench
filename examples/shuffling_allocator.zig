@@ -13,12 +13,9 @@ fn myBenchmark(allocator: std.mem.Allocator) void {
 pub fn main() !void {
     var threaded: std.Io.Threaded = .init_single_threaded;
     const io = threaded.io();
-
     const stdout: std.Io.File = .stdout();
 
-    var bench = zbench.Benchmark.init(gpa.allocator(), .{
-        .iterations = 64,
-    });
+    var bench = zbench.Benchmark.init(gpa.allocator(), .{ .iterations = 64 });
     defer {
         bench.deinit();
         const deinit_status = gpa.deinit();
@@ -26,19 +23,15 @@ pub fn main() !void {
     }
 
     try bench.add("My Benchmark 1", myBenchmark, .{});
-
     try bench.add("My Benchmark 2 (tracking)", myBenchmark, .{
         .track_allocations = true,
     });
-
     try bench.add("My Benchmark 3 (shuffling)", myBenchmark, .{
         .use_shuffling_allocator = true,
     });
-
     try bench.add("My Benchmark 4 (shuffling + track)", myBenchmark, .{
         .track_allocations = true,
         .use_shuffling_allocator = true,
     });
-
     try bench.run(io, stdout);
 }
