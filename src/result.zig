@@ -44,33 +44,43 @@ pub const Result = struct {
         // Benchmark name, number of iterations, and total time
         try writer.print(name_fmt, .{truncated_name});
         try terminal.setColor(Color.cyan);
-        try writer.print("{d:<8} {D:<15}", .{
+        var tmp = try std.fmt.bufPrint(&buf, "{d:<8} {f}", .{
             self.readings.iterations,
-            s.total,
+            std.Io.Duration.fromNanoseconds(s.total),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 24, .left, ' ');
+
         // Mean + standard deviation
         try terminal.setColor(Color.green);
-        try writer.print("{s:<23}", .{
-            try std.fmt.bufPrint(&buf, "{D:.3} ± {D:.3}", .{
-                s.mean,
-                s.stddev,
-            }),
+        tmp = try std.fmt.bufPrint(&buf, "{f} ± {f}", .{
+            std.Io.Duration.fromNanoseconds(s.mean),
+            std.Io.Duration.fromNanoseconds(s.stddev),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 23, .left, ' ');
+
         // Minimum and maximum
         try terminal.setColor(Color.green);
-        try writer.print("{s:<29}", .{
-            try std.fmt.bufPrint(&buf, "({D:.3} ... {D:.3})", .{
-                s.min,
-                s.max,
-            }),
+        tmp = try std.fmt.bufPrint(&buf, "({f} ... {f})", .{
+            std.Io.Duration.fromNanoseconds(s.min),
+            std.Io.Duration.fromNanoseconds(s.max),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 29, .left, ' ');
+
         // Percentiles
         try terminal.setColor(Color.cyan);
-        try writer.print("{D:<10} {D:<10} {D:<10}", .{
-            s.percentiles.p75,
-            s.percentiles.p99,
-            s.percentiles.p995,
+        tmp = try std.fmt.bufPrint(&buf, "{f}", .{
+            std.Io.Duration.fromNanoseconds(s.percentiles.p75),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 11, .left, ' ');
+        tmp = try std.fmt.bufPrint(&buf, "{f}", .{
+            std.Io.Duration.fromNanoseconds(s.percentiles.p99),
+        });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 11, .left, ' ');
+        tmp = try std.fmt.bufPrint(&buf, "{f}", .{
+            std.Io.Duration.fromNanoseconds(s.percentiles.p995),
+        });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 11, .left, ' ');
+
         // End of line
         try terminal.setColor(Color.reset);
         try writer.writeAll("\n");
