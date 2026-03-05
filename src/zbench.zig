@@ -197,6 +197,7 @@ pub const Benchmark = struct {
 pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
     const _name_len = if (name_len > MAX_NAME_LEN) MAX_NAME_LEN else name_len;
     const header_fmt: []const u8 = "{s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n";
+    const dashes_repeat: usize = 111;
 
     var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
     const writer: *std.Io.Writer = &w.interface;
@@ -217,7 +218,7 @@ pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
             "p995",
         },
     );
-    try writer.splatByteAll('-', _name_len + 111);
+    try writer.splatByteAll('-', _name_len + dashes_repeat);
     try writer.print("\n", .{});
 }
 
