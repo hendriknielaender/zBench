@@ -30,7 +30,7 @@ const MAX_NAME_LEN: usize = 64;
 pub const Benchmark = struct {
     allocator: std.mem.Allocator,
     common_config: Config,
-    benchmarks: std.ArrayListUnmanaged(Definition) = .{},
+    benchmarks: std.ArrayList(Definition) = .{},
     longest_name: usize = 0, // for pretty-printing the results
 
     pub fn init(allocator: std.mem.Allocator, config: Config) Benchmark {
