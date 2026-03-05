@@ -24,7 +24,7 @@ const partial = @import("partial.zig").partial;
 const platform = @import("platform/platform.zig");
 
 // maximum number of characters to allow for the benchmark name (pretty-printing):
-const MAX_NAME_LEN: usize = 64;
+pub const MAX_NAME_LEN: usize = 96;
 
 /// Benchmark manager, add your benchmark functions and run measure them.
 pub const Benchmark = struct {
@@ -195,8 +195,7 @@ pub const Benchmark = struct {
 
 /// Write the prettyPrint() header to a writer.
 pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
-    const name_len_limit: usize = 96;
-    const _name_len = if (name_len > name_len_limit) name_len_limit else name_len;
+    const _name_len = if (name_len > MAX_NAME_LEN) MAX_NAME_LEN else name_len;
     const header_fmt: []const u8 = "{s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n";
 
     var w: std.Io.File.Writer = file.writerStreaming(io, &.{});

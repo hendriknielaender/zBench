@@ -4,11 +4,12 @@ const Color = Terminal.Color;
 const Duration = std.Io.Duration;
 const assert = std.debug.assert;
 
-const Statistics = @import("statistics.zig").Statistics;
 const fmt = @import("fmt.zig");
 const statistics = @import("statistics.zig");
 const Runner = @import("runner.zig");
 const Readings = Runner.Readings;
+const Statistics = statistics.Statistics;
+const MAX_NAME_LEN = @import("zbench.zig").MAX_NAME_LEN;
 
 /// Carries the results of a benchmark. The benchmark name and the recorded
 /// durations are available, and some basic statistics are automatically
@@ -35,25 +36,23 @@ pub const Result = struct {
         // comptime name_fmt: []const u8,
         name_len: usize,
     ) !void {
-        const name_len_limit: usize = 96;
-        const buf_len: usize = 128;
-        const _name_len = if (name_len > name_len_limit) name_len_limit else name_len;
-        assert(_name_len + 3 < buf_len);
-
         var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
         const writer: *std.Io.Writer = &w.interface;
         const terminal_mode: Terminal.Mode = try .detect(io, file, false, false);
         const terminal: Terminal = .{ .writer = writer, .mode = terminal_mode };
 
+        const buf_len: usize = 128;
+        const _name_len = if (name_len > MAX_NAME_LEN) MAX_NAME_LEN else name_len;
+        assert(_name_len + 3 < buf_len);
+
         var buf: [buf_len]u8 = undefined;
 
         const timings_ns = self.readings.timings_ns;
         const s = try Statistics(u64).init(timings_ns);
-        const truncated_name = self.name[0..@min(name_len_limit, self.name.len)];
+        const truncated_name = self.name[0..@min(MAX_NAME_LEN, self.name.len)];
 
         // Benchmark name, number of iterations, and total time
         _ = try std.Io.Writer.alignBuffer(writer, truncated_name, _name_len + 3, .left, ' ');
-
         try terminal.setColor(Color.cyan);
         var tmp = try std.fmt.bufPrint(&buf, "{d:<8} {f}", .{
             self.readings.iterations,
