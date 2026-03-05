@@ -31,9 +31,7 @@ pub fn main() !void {
     try zbench.prettyPrintHeader(
         io,
         stdout,
-        22,
-        // TODO :
-        // "{s:<20} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n",
+        bench.longest_name,
     );
 
     // Initialize the std.Progress api
@@ -79,9 +77,7 @@ pub fn main() !void {
             completed_benchmarks += 1;
             suite_node.setCompletedItems(completed_benchmarks);
 
-            // TODO :
-            //try r.prettyPrint(io, stdout, "{s:<20} ");
-            try r.prettyPrint(io, stdout, 22);
+            try r.prettyPrint(io, stdout, bench.longest_name);
         },
     };
 
