@@ -94,12 +94,13 @@ pub const Result = struct {
 
         if (self.readings.allocations) |allocs| {
             const m = try Statistics(usize).init(allocs.maxes);
-            // TODO : sync padding
+            const trackmem_offset: usize = 52;
+
             // Benchmark name
-            const name = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{
-                truncated_name,
-            });
-            try writer.print("{s:<46} ", .{name});
+            tmp = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{truncated_name});
+            _ = try std.Io.Writer.alignBuffer(writer, tmp, _name_len, .left, ' ');
+            try writer.splatByteAll(' ', if (truncated_name.len > trackmem_offset - 1) 1 else trackmem_offset - truncated_name.len);
+
             // Mean + standard deviation
             try terminal.setColor(Color.green);
             try writer.print("{s:<23}", .{

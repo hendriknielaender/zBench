@@ -217,9 +217,8 @@ pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
             "p995",
         },
     );
-    // TODO : sync dashes len
-    const dashes = "-------------------------";
-    try writer.print(dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ "\n", .{});
+    try writer.splatByteAll('-', _name_len + 111);
+    try writer.print("\n", .{});
 }
 
 /// Get a copy of the system information, cpu type, cores, memory, etc.
