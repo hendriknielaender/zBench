@@ -23,7 +23,7 @@ const Partial = @import("partial.zig").Partial;
 const partial = @import("partial.zig").partial;
 const platform = @import("platform/platform.zig");
 
-// maximum number of characters to allow for the benchmark name (pretty-printing):
+// Maximum number of characters to allow for the benchmark name (pretty-printing):
 pub const MAX_NAME_LEN: usize = 96;
 
 /// Benchmark manager, add your benchmark functions and run measure them.
@@ -59,7 +59,7 @@ pub const Benchmark = struct {
         self.longest_name = if (name.len > self.longest_name) name.len else self.longest_name;
     }
 
-    /// Add a benchmark function to be timed with `run()`.
+    /// Add a parameterised benchmark function to be timed with `run()`.
     pub fn addParam(
         self: *Benchmark,
         name: []const u8,

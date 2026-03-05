@@ -27,13 +27,10 @@ pub const Result = struct {
     }
 
     /// Formats and prints the benchmark result in a human readable format.
-    /// writer: Type that has the associated method print (for example std.Io.getStdOut.writer())
-    /// tty_config: TTY configuration for color output.
     pub fn prettyPrint(
         self: Result,
         io: std.Io,
         file: std.Io.File,
-        // comptime name_fmt: []const u8,
         name_len: usize,
     ) !void {
         var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
@@ -43,7 +40,7 @@ pub const Result = struct {
 
         const buf_len: usize = 128;
         const _name_len = if (name_len > MAX_NAME_LEN) MAX_NAME_LEN else name_len;
-        assert(_name_len + 3 < buf_len);
+        assert(_name_len + 3 <= buf_len);
 
         var buf: [buf_len]u8 = undefined;
 
@@ -132,6 +129,7 @@ pub const Result = struct {
         }
     }
 
+    /// Formats and prints the benchmark result in JSON format.
     pub fn writeJSON(
         self: Result,
         writer: *std.Io.Writer,
