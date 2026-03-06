@@ -94,7 +94,7 @@ pub const Result = struct {
 
         if (self.readings.allocations) |allocs| {
             const m = try Statistics(usize).init(allocs.maxes);
-            const trackmem_offset: usize = (MAX_NAME_LEN - truncated_name.len) - (MAX_NAME_LEN - name_len) + 18;
+            const trackmem_offset: usize = name_len - truncated_name.len + 18;
 
             // Benchmark name
             tmp = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{truncated_name});
