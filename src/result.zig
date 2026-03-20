@@ -9,7 +9,7 @@ const statistics = @import("statistics.zig");
 const Runner = @import("runner.zig");
 const Readings = Runner.Readings;
 const Statistics = statistics.Statistics;
-const MAX_NAME_LEN = @import("zbench.zig").MAX_NAME_LEN;
+const NAME_LEN_LIMIT = @import("zbench.zig").NAME_LEN_LIMIT;
 
 /// Carries the results of a benchmark. The benchmark name and the recorded
 /// durations are available, and some basic statistics are automatically
@@ -39,14 +39,14 @@ pub const Result = struct {
         const terminal: Terminal = .{ .writer = writer, .mode = terminal_mode };
 
         const buf_len: usize = 128;
-        const _name_len = if (name_len > MAX_NAME_LEN) MAX_NAME_LEN else name_len;
+        const _name_len = if (name_len > NAME_LEN_LIMIT) NAME_LEN_LIMIT else name_len;
         assert(_name_len + 3 <= buf_len);
 
         var buf: [buf_len]u8 = undefined;
 
         const timings_ns = self.readings.timings_ns;
         const s = try Statistics(u64).init(timings_ns);
-        const truncated_name = self.name[0..@min(MAX_NAME_LEN, self.name.len)];
+        const truncated_name = self.name[0..@min(NAME_LEN_LIMIT, self.name.len)];
 
         // Benchmark name, number of iterations, and total time
         _ = try std.Io.Writer.alignBuffer(writer, truncated_name, _name_len + 3, .left, ' ');
