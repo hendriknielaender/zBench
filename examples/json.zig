@@ -1,6 +1,6 @@
 const std = @import("std");
 const zbench = @import("zbench");
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+var gpa = std.heap.DebugAllocator(.{}){};
 
 fn myBenchmark(alloc: std.mem.Allocator) void {
     var result: usize = 0;
