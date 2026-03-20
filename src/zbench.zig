@@ -24,14 +24,14 @@ const partial = @import("partial.zig").partial;
 const platform = @import("platform/platform.zig");
 
 // Maximum number of characters to allow for the benchmark name (pretty-printing):
-pub const MAX_NAME_LEN: usize = 96;
+pub const NAME_LEN_LIMIT: usize = 96;
 
 /// Benchmark manager, add your benchmark functions and run measure them.
 pub const Benchmark = struct {
     allocator: std.mem.Allocator,
     common_config: Config,
     benchmarks: std.ArrayList(Definition) = .empty,
-    longest_name: usize = 0, // for pretty-printing the results
+    max_name_len: usize = 0, // for pretty-printing the results
 
     pub fn init(allocator: std.mem.Allocator, config: Config) Benchmark {
         return Benchmark{
@@ -56,7 +56,7 @@ pub const Benchmark = struct {
             .defn = .{ .simple = func },
             .config = partial(Config, config, self.common_config),
         });
-        self.longest_name = if (name.len > self.longest_name) name.len else self.longest_name;
+        self.max_name_len = if (name.len > self.max_name_len) name.len else self.max_name_len;
     }
 
     /// Add a parameterised benchmark function to be timed with `run()`.
@@ -87,6 +87,7 @@ pub const Benchmark = struct {
             } },
             .config = partial(Config, config, self.common_config),
         });
+        self.max_name_len = if (name.len > self.max_name_len) name.len else self.max_name_len;
     }
 
     /// An incremental API for getting progress updates on running benchmarks.
@@ -181,13 +182,13 @@ pub const Benchmark = struct {
 
     /// Run all benchmarks and collect timing information.
     pub fn run(self: Benchmark, io: std.Io, file: std.Io.File) !void {
-        try prettyPrintHeader(io, file, self.longest_name);
+        try prettyPrintHeader(io, file, self.max_name_len);
         var iter = try self.iterator();
         while (try iter.next(io)) |step| switch (step) {
             .progress => {},
             .result => |x| {
                 defer x.deinit();
-                try x.prettyPrint(io, file, self.longest_name);
+                try x.prettyPrint(io, file, self.max_name_len);
             },
         };
     }
@@ -195,7 +196,7 @@ pub const Benchmark = struct {
 
 /// Write the prettyPrint() header to a writer.
 pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
-    const _name_len = if (name_len > MAX_NAME_LEN) MAX_NAME_LEN else name_len;
+    const _name_len = if (name_len > NAME_LEN_LIMIT) NAME_LEN_LIMIT else name_len;
     const header_fmt: []const u8 = "{s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n";
     const dashes_repeat: usize = 111;
 
