@@ -10,7 +10,7 @@ const inc = @import("include");
 const zbench = @import("zbench");
 
 // Global variables modified/accessed by the hooks.
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+var gpa = std.heap.DebugAllocator(.{}){};
 const array_size: usize = 100;
 // BenchmarkData contains the data generation logic.
 var benchmark_data: BenchmarkData = undefined;

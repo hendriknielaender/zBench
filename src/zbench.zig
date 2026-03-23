@@ -23,11 +23,15 @@ const Partial = @import("partial.zig").Partial;
 const partial = @import("partial.zig").partial;
 const platform = @import("platform/platform.zig");
 
+// Maximum number of characters to allow for the benchmark name (pretty-printing):
+pub const NAME_LEN_LIMIT: usize = 96;
+
 /// Benchmark manager, add your benchmark functions and run measure them.
 pub const Benchmark = struct {
     allocator: std.mem.Allocator,
     common_config: Config,
-    benchmarks: std.ArrayListUnmanaged(Definition) = .{},
+    benchmarks: std.ArrayList(Definition) = .empty,
+    max_name_len: usize = 0, // for pretty-printing the results
 
     pub fn init(allocator: std.mem.Allocator, config: Config) Benchmark {
         return Benchmark{
@@ -52,9 +56,10 @@ pub const Benchmark = struct {
             .defn = .{ .simple = func },
             .config = partial(Config, config, self.common_config),
         });
+        self.max_name_len = if (name.len > self.max_name_len) name.len else self.max_name_len;
     }
 
-    /// Add a benchmark function to be timed with `run()`.
+    /// Add a parameterised benchmark function to be timed with `run()`.
     pub fn addParam(
         self: *Benchmark,
         name: []const u8,
@@ -82,6 +87,7 @@ pub const Benchmark = struct {
             } },
             .config = partial(Config, config, self.common_config),
         });
+        self.max_name_len = if (name.len > self.max_name_len) name.len else self.max_name_len;
     }
 
     /// An incremental API for getting progress updates on running benchmarks.
@@ -176,31 +182,34 @@ pub const Benchmark = struct {
 
     /// Run all benchmarks and collect timing information.
     pub fn run(self: Benchmark, io: std.Io, file: std.Io.File) !void {
-        // TODO : benchmark name length is comptime-known, so we should determine
-        //        the format considering this (see #130)
-        const header_fmt = "{s:<22} {s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n";
-        const name_fmt = "{s:<22} ";
-
-        try prettyPrintHeader(io, file, header_fmt);
+        try prettyPrintHeader(io, file, self.max_name_len);
         var iter = try self.iterator();
         while (try iter.next(io)) |step| switch (step) {
             .progress => {},
             .result => |x| {
                 defer x.deinit();
-                try x.prettyPrint(io, file, name_fmt);
+                try x.prettyPrint(io, file, self.max_name_len);
             },
         };
     }
 };
 
 /// Write the prettyPrint() header to a writer.
-pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, comptime header_fmt: []const u8) !void {
+pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
+    const _name_len = if (name_len > NAME_LEN_LIMIT) NAME_LEN_LIMIT else name_len;
+    const header_fmt: []const u8 = "{s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n";
+    const dashes_repeat: usize = 111;
+
     var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
     const writer: *std.Io.Writer = &w.interface;
+
+    // header starts with "benchmark", which needs to be padded depending on the
+    // longest benchmark name.
+    _ = try std.Io.Writer.alignBuffer(writer, "benchmark", _name_len + 3, .left, ' ');
     try writer.print(
         header_fmt,
         .{
-            "benchmark",
+            // "benchmark" is written by alignBuffer
             "runs",
             "total time",
             "time/run (avg ± σ)",
@@ -210,8 +219,8 @@ pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, comptime header_fmt: []c
             "p995",
         },
     );
-    const dashes = "-------------------------";
-    try writer.print(dashes ++ dashes ++ dashes ++ dashes ++ dashes ++ "\n", .{});
+    try writer.splatByteAll('-', _name_len + dashes_repeat);
+    try writer.print("\n", .{});
 }
 
 /// Get a copy of the system information, cpu type, cores, memory, etc.

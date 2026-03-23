@@ -1,11 +1,15 @@
 const std = @import("std");
 const Terminal = std.Io.Terminal;
 const Color = Terminal.Color;
-const Statistics = @import("statistics.zig").Statistics;
+const Duration = std.Io.Duration;
+const assert = std.debug.assert;
+
 const fmt = @import("fmt.zig");
 const statistics = @import("statistics.zig");
 const Runner = @import("runner.zig");
 const Readings = Runner.Readings;
+const Statistics = statistics.Statistics;
+const NAME_LEN_LIMIT = @import("zbench.zig").NAME_LEN_LIMIT;
 
 /// Carries the results of a benchmark. The benchmark name and the recorded
 /// durations are available, and some basic statistics are automatically
@@ -23,65 +27,80 @@ pub const Result = struct {
     }
 
     /// Formats and prints the benchmark result in a human readable format.
-    /// writer: Type that has the associated method print (for example std.Io.getStdOut.writer())
-    /// tty_config: TTY configuration for color output.
     pub fn prettyPrint(
         self: Result,
         io: std.Io,
         file: std.Io.File,
-        comptime name_fmt: []const u8,
+        name_len: usize,
     ) !void {
         var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
         const writer: *std.Io.Writer = &w.interface;
         const terminal_mode: Terminal.Mode = try .detect(io, file, false, false);
         const terminal: Terminal = .{ .writer = writer, .mode = terminal_mode };
 
-        var buf: [128]u8 = undefined;
+        const buf_len: usize = 128;
+        const _name_len = if (name_len > NAME_LEN_LIMIT) NAME_LEN_LIMIT else name_len;
+        assert(_name_len + 3 <= buf_len);
+
+        var buf: [buf_len]u8 = undefined;
 
         const timings_ns = self.readings.timings_ns;
         const s = try Statistics(u64).init(timings_ns);
-        const truncated_name = self.name[0..@min(22, self.name.len)];
+        const truncated_name = self.name[0..@min(NAME_LEN_LIMIT, self.name.len)];
+
         // Benchmark name, number of iterations, and total time
-        try writer.print(name_fmt, .{truncated_name});
+        _ = try std.Io.Writer.alignBuffer(writer, truncated_name, _name_len + 3, .left, ' ');
         try terminal.setColor(Color.cyan);
-        try writer.print("{d:<8} {D:<15}", .{
+        var tmp = try std.fmt.bufPrint(&buf, "{d:<8} {f}", .{
             self.readings.iterations,
-            s.total,
+            Duration.fromNanoseconds(s.total),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 24, .left, ' ');
+
         // Mean + standard deviation
         try terminal.setColor(Color.green);
-        try writer.print("{s:<23}", .{
-            try std.fmt.bufPrint(&buf, "{D:.3} ± {D:.3}", .{
-                s.mean,
-                s.stddev,
-            }),
+        tmp = try std.fmt.bufPrint(&buf, "{f} ± {f}", .{
+            Duration.fromNanoseconds(s.mean),
+            Duration.fromNanoseconds(s.stddev),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 23, .left, ' ');
+
         // Minimum and maximum
         try terminal.setColor(Color.green);
-        try writer.print("{s:<29}", .{
-            try std.fmt.bufPrint(&buf, "({D:.3} ... {D:.3})", .{
-                s.min,
-                s.max,
-            }),
+        tmp = try std.fmt.bufPrint(&buf, "({f} ... {f})", .{
+            Duration.fromNanoseconds(s.min),
+            Duration.fromNanoseconds(s.max),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 29, .left, ' ');
+
         // Percentiles
         try terminal.setColor(Color.cyan);
-        try writer.print("{D:<10} {D:<10} {D:<10}", .{
-            s.percentiles.p75,
-            s.percentiles.p99,
-            s.percentiles.p995,
+        tmp = try std.fmt.bufPrint(&buf, "{f}", .{
+            Duration.fromNanoseconds(s.percentiles.p75),
         });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 11, .left, ' ');
+        tmp = try std.fmt.bufPrint(&buf, "{f}", .{
+            Duration.fromNanoseconds(s.percentiles.p99),
+        });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 11, .left, ' ');
+        tmp = try std.fmt.bufPrint(&buf, "{f}", .{
+            Duration.fromNanoseconds(s.percentiles.p995),
+        });
+        _ = try std.Io.Writer.alignBuffer(writer, tmp, 11, .left, ' ');
+
         // End of line
         try terminal.setColor(Color.reset);
         try writer.writeAll("\n");
 
         if (self.readings.allocations) |allocs| {
             const m = try Statistics(usize).init(allocs.maxes);
+            const trackmem_offset: usize = name_len - truncated_name.len + 18;
+
             // Benchmark name
-            const name = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{
-                truncated_name,
-            });
-            try writer.print("{s:<46} ", .{name});
+            tmp = try std.fmt.bufPrint(&buf, "{s} [MEMORY]", .{truncated_name});
+            _ = try std.Io.Writer.alignBuffer(writer, tmp, _name_len, .left, ' ');
+            try writer.splatByteAll(' ', trackmem_offset);
+
             // Mean + standard deviation
             try terminal.setColor(Color.green);
             try writer.print("{s:<23}", .{
@@ -111,6 +130,7 @@ pub const Result = struct {
         }
     }
 
+    /// Formats and prints the benchmark result in JSON format.
     pub fn writeJSON(
         self: Result,
         writer: *std.Io.Writer,

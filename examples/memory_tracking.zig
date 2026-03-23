@@ -1,10 +1,13 @@
 const std = @import("std");
 const zbench = @import("zbench");
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+var gpa = std.heap.DebugAllocator(.{}){};
+
+// amount of memory that should appear in the [MEMORY] section of the output
+const NUM_BYTES = 1024;
 
 fn myBenchmark(allocator: std.mem.Allocator) void {
     for (0..2000) |_| {
-        const buf = allocator.alloc(u8, 512) catch @panic("OOM");
+        const buf = allocator.alloc(u8, NUM_BYTES) catch @panic("OOM");
         defer allocator.free(buf);
     }
 }
