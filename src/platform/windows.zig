@@ -66,7 +66,7 @@ pub fn getTotalMemory() !u64 {
     var memory_status: MEMORYSTATUSEX = undefined;
     memory_status.dwLength = @sizeOf(MEMORYSTATUSEX);
 
-    if (GlobalMemoryStatusEx(&memory_status) == 0) {
+    if (!GlobalMemoryStatusEx(&memory_status).toBool()) {
         return error.CouldNotRetrieveMemorySize;
     }
 
