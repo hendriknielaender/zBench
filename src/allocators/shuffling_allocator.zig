@@ -9,11 +9,6 @@ const NUM_SIZE_CLASSES: usize = 32;
 const SHUFFLE_CAPACITY: usize = 256;
 const SHUFFLE_ALIGNMENT: std.mem.Alignment = std.mem.Alignment.of(usize);
 
-comptime {
-    assert(NUM_SIZE_CLASSES == 32);
-    assert(SHUFFLE_CAPACITY == 256);
-}
-
 const SizeClassInfo = struct {
     index: usize,
     size_class: usize,
