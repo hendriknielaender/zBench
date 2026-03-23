@@ -5,28 +5,52 @@ const c = std.c;
 
 var gpa = std.heap.DebugAllocator(.{}){};
 
+const OldSystemInfoBenchmark = struct {
+    io: std.Io,
+
+    pub fn run(self: *OldSystemInfoBenchmark, allocator: std.mem.Allocator) void {
+        if (builtin.os.tag != .macos) return;
+
+        const cpu_name = getCpuNameOld(self.io, allocator) catch return;
+        defer allocator.free(cpu_name);
+        std.mem.doNotOptimizeAway(cpu_name);
+
+        const cpu_cores = getCpuCoresOld(self.io, allocator) catch return;
+        std.mem.doNotOptimizeAway(cpu_cores);
+
+        const total_memory = getTotalMemoryOld(self.io, allocator) catch return;
+        std.mem.doNotOptimizeAway(total_memory);
+    }
+};
+
 // Old implementation using subprocess calls
-fn execOld(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
-    const result = try std.process.Child.run(.{ .allocator = allocator, .argv = args });
+fn execOld(io: std.Io, allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
+    const result = try std.process.run(allocator, io, .{ .argv = args });
     defer allocator.free(result.stdout);
+    defer allocator.free(result.stderr);
     if (result.stdout.len == 0) return error.EmptyOutput;
 
-    // Copy to avoid use-after-free
-    const output = try allocator.dupe(u8, result.stdout[0 .. result.stdout.len - 1]);
+    const trimmed = std.mem.trimEnd(u8, result.stdout, "\r\n");
+    if (trimmed.len == 0) return error.EmptyOutput;
+
+    // Copy to avoid use-after-free.
+    const output = try allocator.dupe(u8, trimmed);
     return output;
 }
 
-fn getCpuNameOld(allocator: std.mem.Allocator) ![]const u8 {
-    return try execOld(allocator, &.{ "sysctl", "-n", "machdep.cpu.brand_string" });
+fn getCpuNameOld(io: std.Io, allocator: std.mem.Allocator) ![]const u8 {
+    return try execOld(io, allocator, &.{ "sysctl", "-n", "machdep.cpu.brand_string" });
 }
 
-fn getCpuCoresOld(allocator: std.mem.Allocator) !u32 {
-    const str = try execOld(allocator, &.{ "sysctl", "-n", "hw.physicalcpu" });
+fn getCpuCoresOld(io: std.Io, allocator: std.mem.Allocator) !u32 {
+    const str = try execOld(io, allocator, &.{ "sysctl", "-n", "hw.physicalcpu" });
+    defer allocator.free(str);
     return std.fmt.parseInt(u32, str, 10) catch return error.ParseError;
 }
 
-fn getTotalMemoryOld(allocator: std.mem.Allocator) !u64 {
-    const str = try execOld(allocator, &.{ "sysctl", "-n", "hw.memsize" });
+fn getTotalMemoryOld(io: std.Io, allocator: std.mem.Allocator) !u64 {
+    const str = try execOld(io, allocator, &.{ "sysctl", "-n", "hw.memsize" });
+    defer allocator.free(str);
     return std.fmt.parseInt(u64, str, 10) catch return error.ParseError;
 }
 
@@ -122,18 +146,6 @@ fn getTotalMemoryWindowsNew() !u64 {
     return 17179869184; // typical value, represents zero allocation
 }
 
-fn benchmarkGetSystemInfoOld(allocator: std.mem.Allocator) void {
-    if (builtin.os.tag != .macos) return;
-
-    // Use the provided allocator to show actual heap usage
-    const cpu_name = getCpuNameOld(allocator) catch return;
-    defer allocator.free(cpu_name);
-    const cpu_cores_str = execOld(allocator, &.{ "sysctl", "-n", "hw.physicalcpu" }) catch return;
-    defer allocator.free(cpu_cores_str);
-    const memory_str = execOld(allocator, &.{ "sysctl", "-n", "hw.memsize" }) catch return;
-    defer allocator.free(memory_str);
-}
-
 fn benchmarkGetSystemInfoNew(allocator: std.mem.Allocator) void {
     _ = allocator;
     if (builtin.os.tag != .macos) return;
@@ -142,9 +154,14 @@ fn benchmarkGetSystemInfoNew(allocator: std.mem.Allocator) void {
     var scratch: [128]u8 = undefined;
     var fbs = std.heap.FixedBufferAllocator.init(&scratch);
 
-    _ = getCpuNameNew(fbs.allocator()) catch return;
-    _ = getCpuCoresNew() catch return;
-    _ = getTotalMemoryNew() catch return;
+    const cpu_name = getCpuNameNew(fbs.allocator()) catch return;
+    std.mem.doNotOptimizeAway(cpu_name);
+
+    const cpu_cores = getCpuCoresNew() catch return;
+    std.mem.doNotOptimizeAway(cpu_cores);
+
+    const total_memory = getTotalMemoryNew() catch return;
+    std.mem.doNotOptimizeAway(total_memory);
 }
 
 fn benchmarkStackUsageOld(allocator: std.mem.Allocator) void {
@@ -190,7 +207,9 @@ pub fn main() !void {
     try writer.writeAll("Memory Usage Comparison: System Info Retrieval\n");
     try writer.writeAll("==============================================\n\n");
 
-    try bench.add("Old Implementation (subprocess + heap)", benchmarkGetSystemInfoOld, .{
+    const old_system_info_benchmark = OldSystemInfoBenchmark{ .io = io };
+
+    try bench.addParam("Old Implementation (subprocess + heap)", &old_system_info_benchmark, .{
         .track_allocations = true,
     });
 

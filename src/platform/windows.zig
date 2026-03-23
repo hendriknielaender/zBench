@@ -74,9 +74,16 @@ pub fn getTotalMemory() !u64 {
 }
 
 fn exec(allocator: std.mem.Allocator, args: []const []const u8) ![]const u8 {
-    const stdout = (try std.process.Child.run(.{ .allocator = allocator, .argv = args })).stdout;
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+    const result = try std.process.run(allocator, io, .{ .argv = args });
+    defer allocator.free(result.stdout);
+    defer allocator.free(result.stderr);
 
-    if (stdout.len == 0) return error.EmptyOutput;
+    if (result.stdout.len == 0) return error.EmptyOutput;
 
-    return stdout[0 .. stdout.len - 1];
+    const trimmed = std.mem.trimEnd(u8, result.stdout, "\r\n");
+    if (trimmed.len == 0) return error.EmptyOutput;
+
+    return allocator.dupe(u8, trimmed);
 }
