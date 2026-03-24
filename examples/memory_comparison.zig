@@ -217,5 +217,8 @@ pub fn main() !void {
         .track_allocations = true,
     });
 
+    try bench.add("Old Stack Usage (24KB total)", benchmarkStackUsageOld, .{});
+    try bench.add("New Stack Usage (128B total)", benchmarkStackUsageNew, .{});
+
     try bench.run(io, stdout);
 }
