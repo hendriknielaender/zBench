@@ -217,10 +217,5 @@ pub fn main() !void {
         .track_allocations = true,
     });
 
-    try writer.writeAll("\nStack Usage Comparison:\n");
-    try writer.writeAll("======================\n\n");
-
-    try bench.add("Old Stack Usage (24KB total)", benchmarkStackUsageOld, .{});
-    try bench.add("New Stack Usage (128B total)", benchmarkStackUsageNew, .{});
     try bench.run(io, stdout);
 }
