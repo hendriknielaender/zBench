@@ -4,21 +4,24 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const assert = std.debug.assert;
 
-/// Constants: 32 size classes, 256 shuffle capacity, etc.
-const NUM_SIZE_CLASSES = 32;
-const SHUFFLE_CAPACITY = 256;
+/// Constants: 32 rounded size classes, 256 spare objects per class.
+const NUM_SIZE_CLASSES: usize = 32;
+const SHUFFLE_CAPACITY: usize = 256;
+const SHUFFLE_ALIGNMENT: std.mem.Alignment = std.mem.Alignment.of(usize);
+
+const SizeClassInfo = struct {
+    index: usize,
+    size_class: usize,
+};
 
 pub const ShufflingAllocator = struct {
-    /// need to pass an IO interface for using mutexes
+    /// The IO interface used by the mutex implementation.
     io: std.Io,
-
-    /// .ptr is `*ShufflingAllocator`, .vtable are the function pointers below.
-    base: std.mem.Allocator,
 
     /// The underlying allocator we rely on for real memory requests.
     underlying: std.mem.Allocator,
 
-    /// Global random state for picking shuffle indices in [0..256).
+    /// Global random state for picking shuffle indices.
     /// Accessed only while holding the `global_mutex`.
     rng_state: u64,
 
@@ -26,9 +29,8 @@ pub const ShufflingAllocator = struct {
     size_classes: [NUM_SIZE_CLASSES]ShuffleArray,
 
     /// A mutex protecting the random state, and also each size class's
-    /// shuffle array has its own sub‐mutex. This struct ensures we can lock
-    /// a global mutex for the RNG, but a separate array of per‐class locks
-    /// for concurrency on the shuffle arrays. So we do:
+    /// shuffle array has its own sub-mutex. This lets us serialize the RNG
+    /// while allowing independent size classes to proceed concurrently. So we do:
     ///
     ///   - Lock `global_mutex` while reading/writing `rng_state`.
     ///   - Lock `size_classes[i].mutex` while accessing that shuffle array.
@@ -43,38 +45,35 @@ pub const ShufflingAllocator = struct {
     ) ShufflingAllocator {
         var self = ShufflingAllocator{
             .io = io,
-            .base = .{ .ptr = undefined, .vtable = &ShufflingAllocator.vtable },
             .underlying = underlying,
             .rng_state = seed,
             .size_classes = undefined,
-            .global_mutex = .{ .state = .init(.unlocked) },
+            .global_mutex = .init,
             .size_class_mutexes = undefined,
         };
 
         // Zero-init each ShuffleArray (and each sub-mutex).
         inline for (0..NUM_SIZE_CLASSES) |i| {
             self.size_classes[i].init();
-            self.size_class_mutexes[i] = .{ .state = .init(.unlocked) };
+            self.size_class_mutexes[i] = .init;
         }
-
-        self.base.ptr = &self;
 
         return self;
     }
 
     pub fn deinit(self: *ShufflingAllocator) void {
-        // Clean up all memory still in the shuffle arrays
+        // Clean up all memory still in the shuffle arrays.
         inline for (0..NUM_SIZE_CLASSES) |i| {
             self.size_class_mutexes[i].lock(self.io) catch unreachable;
             defer self.size_class_mutexes[i].unlock(self.io);
 
             if (self.size_classes[i].active) {
                 for (0..SHUFFLE_CAPACITY) |j| {
-                    if (self.size_classes[i].ptrs[j]) |slot| {
+                    if (self.size_classes[i].ptrs[j]) |slot_ptr| {
                         std.mem.Allocator.rawFree(
                             self.underlying,
-                            slot.ptr[0..self.size_classes[i].size_class],
-                            std.mem.Alignment.@"8",
+                            slot_ptr[0..self.size_classes[i].size_class],
+                            SHUFFLE_ALIGNMENT,
                             @returnAddress(),
                         );
                         self.size_classes[i].ptrs[j] = null;
@@ -86,19 +85,69 @@ pub const ShufflingAllocator = struct {
     }
 
     pub fn allocator(self: *ShufflingAllocator) Allocator {
-        return self.base;
+        return .{
+            .ptr = self,
+            .vtable = &ShufflingAllocator.vtable,
+        };
+    }
+
+    fn random_index(self: *ShufflingAllocator, upper_bound: usize) usize {
+        assert(upper_bound > 0);
+
+        self.global_mutex.lock(self.io) catch unreachable;
+        defer self.global_mutex.unlock(self.io);
+
+        if (self.rng_state == 0) {
+            self.rng_state = 0x9e3779b97f4a7c15;
+        }
+
+        // Marsaglia-style xorshift keeps the state machine simple and cheap.
+        self.rng_state ^= self.rng_state << 13;
+        self.rng_state ^= self.rng_state >> 7;
+        self.rng_state ^= self.rng_state << 17;
+
+        const product: u128 = @as(u128, self.rng_state) * upper_bound;
+        return @intCast(product >> 64);
+    }
+
+    fn shuffling_array(
+        self: *ShufflingAllocator,
+        info: SizeClassInfo,
+        ret_addr: usize,
+    ) ?*ShuffleArray {
+        const sc = &self.size_classes[info.index];
+
+        if (sc.active) {
+            assert(sc.size_class == info.size_class);
+            return sc;
+        }
+
+        if (!sc.prefill(self.underlying, info.size_class, ret_addr)) {
+            return null;
+        }
+
+        var i: usize = SHUFFLE_CAPACITY;
+        while (i > 1) {
+            i -= 1;
+            const shuffle_index = self.random_index(i + 1);
+            const tmp = sc.ptrs[i];
+            sc.ptrs[i] = sc.ptrs[shuffle_index];
+            sc.ptrs[shuffle_index] = tmp;
+        }
+
+        return sc;
     }
 
     /// The standard VTable with function pointers for Allocator calls.
     const vtable: std.mem.Allocator.VTable = .{
-        .alloc = allocFn,
-        .resize = resizeFn,
-        .remap = remapFn,
-        .free = freeFn,
+        .alloc = alloc_fn,
+        .resize = resize_fn,
+        .remap = remap_fn,
+        .free = free_fn,
     };
 
     /// Actual .alloc method. Must return ?[]u8 or null on OOM.
-    fn allocFn(
+    fn alloc_fn(
         self_ptr: *anyopaque,
         len: usize,
         alignment: std.mem.Alignment,
@@ -110,7 +159,8 @@ pub const ShufflingAllocator = struct {
 
         if (len == 0) return &[_]u8{};
 
-        // If alignment > size_of(usize), skip shuffling => fallback
+        // Large alignments must bypass shuffling because this implementation
+        // only maintains word-aligned spare objects
         if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
             return std.mem.Allocator.rawAlloc(
                 self.underlying,
@@ -120,59 +170,44 @@ pub const ShufflingAllocator = struct {
             );
         }
 
-        const idx_opt = sizeClassIndex(len);
-        if (idx_opt == null) {
-            // out-of-range => skip shuffling
+        const class_info = size_class_info(len) orelse {
+            // Unsupported size => skip shuffling.
             return std.mem.Allocator.rawAlloc(
                 self.underlying,
                 len,
                 alignment,
                 ret_addr,
             );
-        }
+        };
 
-        const class_index = idx_opt.?;
-        self.size_class_mutexes[class_index].lock(self.io) catch unreachable;
-        defer self.size_class_mutexes[class_index].unlock(self.io);
+        self.size_class_mutexes[class_info.index].lock(self.io) catch unreachable;
+        defer self.size_class_mutexes[class_info.index].unlock(self.io);
 
-        self.global_mutex.lock(self.io) catch unreachable;
-        const rand_i = randomIndex(&self.rng_state);
-        self.global_mutex.unlock(self.io);
+        const sc = self.shuffling_array(class_info, ret_addr) orelse {
+            return std.mem.Allocator.rawAlloc(
+                self.underlying,
+                len,
+                alignment,
+                ret_addr,
+            );
+        };
 
-        const sc = &self.size_classes[class_index];
-        sc.activateIfNeeded(len);
-
-        // Allocate from underlying:
-        const new_ptr = std.mem.Allocator.rawAlloc(
+        const replacement_ptr = std.mem.Allocator.rawAlloc(
             self.underlying,
-            len,
-            alignment,
+            class_info.size_class,
+            SHUFFLE_ALIGNMENT,
             ret_addr,
         ) orelse return null;
 
-        // Create a new slot entry for this allocation
-        const new_slot = SlotEntry{
-            .ptr = new_ptr,
-            .is_freed = false,
-        };
+        const slot_index = self.random_index(SHUFFLE_CAPACITY);
+        const shuffled_ptr = sc.ptrs[slot_index].?;
+        sc.ptrs[slot_index] = replacement_ptr;
 
-        // Swap with the random slot:
-        const old_entry = sc.ptrs[rand_i];
-
-        // Replace the random slot with our new allocation
-        sc.ptrs[rand_i] = new_slot;
-
-        // If the random slot was empty, return the newly allocated pointer
-        if (old_entry == null) {
-            return new_ptr;
-        }
-
-        // Otherwise return the old pointer (which is now shuffled)
-        return old_entry.?.ptr;
+        return shuffled_ptr;
     }
 
     /// .free method.
-    fn freeFn(
+    fn free_fn(
         self_ptr: *anyopaque,
         memory: []u8,
         alignment: std.mem.Alignment,
@@ -185,7 +220,7 @@ pub const ShufflingAllocator = struct {
         // Zero-length means nothing to free
         if (memory.len == 0) return;
 
-        // If alignment is large, skip shuffle
+        // Large alignments bypass shuffling for the same reason as alloc.
         if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
             std.mem.Allocator.rawFree(
                 self.underlying,
@@ -196,9 +231,8 @@ pub const ShufflingAllocator = struct {
             return;
         }
 
-        const idx_opt = sizeClassIndex(memory.len);
-        if (idx_opt == null) {
-            // Out-of-range => skip shuffle
+        const class_info = size_class_info(memory.len) orelse {
+            // Unsupported size => skip shuffling.
             std.mem.Allocator.rawFree(
                 self.underlying,
                 memory,
@@ -206,13 +240,12 @@ pub const ShufflingAllocator = struct {
                 ret_addr,
             );
             return;
-        }
+        };
 
-        const class_index = idx_opt.?;
-        self.size_class_mutexes[class_index].lock(self.io) catch unreachable;
-        defer self.size_class_mutexes[class_index].unlock(self.io);
+        self.size_class_mutexes[class_info.index].lock(self.io) catch unreachable;
+        defer self.size_class_mutexes[class_info.index].unlock(self.io);
 
-        const sc = &self.size_classes[class_index];
+        const sc = &self.size_classes[class_info.index];
         if (!sc.active) {
             std.mem.Allocator.rawFree(
                 self.underlying,
@@ -223,61 +256,22 @@ pub const ShufflingAllocator = struct {
             return;
         }
 
-        assert(sc.size_class == memory.len);
+        assert(sc.size_class == class_info.size_class);
 
-        // Find the slot containing this memory
-        var slot_index: ?usize = null;
-        for (sc.ptrs, 0..) |entry, i| {
-            if (entry) |slot| {
-                if (slot.ptr == memory.ptr) {
-                    slot_index = i;
-                    break;
-                }
-            }
-        }
-
-        if (slot_index == null) {
-            // Memory not found in our shuffle array, free directly
-            std.mem.Allocator.rawFree(
-                self.underlying,
-                memory,
-                alignment,
-                ret_addr,
-            );
-            return;
-        }
+        const slot_index = self.random_index(SHUFFLE_CAPACITY);
+        const evicted_ptr = sc.ptrs[slot_index].?;
+        sc.ptrs[slot_index] = memory.ptr;
 
         std.mem.Allocator.rawFree(
             self.underlying,
-            memory,
-            alignment,
+            evicted_ptr[0..class_info.size_class],
+            SHUFFLE_ALIGNMENT,
             ret_addr,
         );
-        sc.ptrs[slot_index.?] = null;
-
-        var freed_count: usize = 0;
-        const max_to_free: usize = 4;
-
-        for (sc.ptrs, 0..) |entry, i| {
-            if (freed_count >= max_to_free) break;
-
-            if (entry) |slot| {
-                if (slot.is_freed) {
-                    std.mem.Allocator.rawFree(
-                        self.underlying,
-                        slot.ptr[0..sc.size_class],
-                        alignment,
-                        ret_addr,
-                    );
-                    sc.ptrs[i] = null;
-                    freed_count += 1;
-                }
-            }
-        }
     }
 
-    /// .resize method: pass-through, do not shuffle on resize.
-    fn resizeFn(
+    /// .resize method: delegate only for layouts that were never shuffled.
+    fn resize_fn(
         self_ptr: *anyopaque,
         memory: []u8,
         alignment: std.mem.Alignment,
@@ -287,17 +281,47 @@ pub const ShufflingAllocator = struct {
         assert((@intFromPtr(self_ptr) % @alignOf(ShufflingAllocator)) == 0);
         const tmp: *align(@alignOf(ShufflingAllocator)) anyopaque = @alignCast(self_ptr);
         const self: *ShufflingAllocator = @ptrCast(tmp);
-        return std.mem.Allocator.rawResize(
-            self.underlying,
-            memory,
-            alignment,
-            new_len,
-            ret_addr,
-        );
+
+        if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
+            return std.mem.Allocator.rawResize(
+                self.underlying,
+                memory,
+                alignment,
+                new_len,
+                ret_addr,
+            );
+        }
+
+        const class_info = size_class_info(memory.len) orelse {
+            return std.mem.Allocator.rawResize(
+                self.underlying,
+                memory,
+                alignment,
+                new_len,
+                ret_addr,
+            );
+        };
+
+        self.size_class_mutexes[class_info.index].lock(self.io) catch unreachable;
+        defer self.size_class_mutexes[class_info.index].unlock(self.io);
+
+        if (!self.size_classes[class_info.index].active) {
+            return std.mem.Allocator.rawResize(
+                self.underlying,
+                memory,
+                alignment,
+                new_len,
+                ret_addr,
+            );
+        }
+
+        // Shuffled allocations were rounded up to the size class, so we must
+        // refuse in-place resize and let callers fall back to alloc-copy-free.
+        return false;
     }
 
-    /// .remap method: pass-through.
-    fn remapFn(
+    /// .remap method: delegate only for layouts that were never shuffled.
+    fn remap_fn(
         self_ptr: *anyopaque,
         memory: []u8,
         alignment: std.mem.Alignment,
@@ -307,27 +331,49 @@ pub const ShufflingAllocator = struct {
         assert((@intFromPtr(self_ptr) % @alignOf(ShufflingAllocator)) == 0);
         const tmp: *align(@alignOf(ShufflingAllocator)) anyopaque = @alignCast(self_ptr);
         const self: *ShufflingAllocator = @ptrCast(tmp);
-        return std.mem.Allocator.rawRemap(
-            self.underlying,
-            memory,
-            alignment,
-            new_len,
-            ret_addr,
-        );
-    }
-};
 
-/// Entry for the shuffle array - includes pointer and free status
-const SlotEntry = struct {
-    ptr: [*]u8,
-    is_freed: bool,
+        if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
+            return std.mem.Allocator.rawRemap(
+                self.underlying,
+                memory,
+                alignment,
+                new_len,
+                ret_addr,
+            );
+        }
+
+        const class_info = size_class_info(memory.len) orelse {
+            return std.mem.Allocator.rawRemap(
+                self.underlying,
+                memory,
+                alignment,
+                new_len,
+                ret_addr,
+            );
+        };
+
+        self.size_class_mutexes[class_info.index].lock(self.io) catch unreachable;
+        defer self.size_class_mutexes[class_info.index].unlock(self.io);
+
+        if (!self.size_classes[class_info.index].active) {
+            return std.mem.Allocator.rawRemap(
+                self.underlying,
+                memory,
+                alignment,
+                new_len,
+                ret_addr,
+            );
+        }
+
+        return null;
+    }
 };
 
 /// ShuffleArray keeps up to 256 pointers for each size class.
 const ShuffleArray = struct {
     active: bool = false,
     size_class: usize = 0,
-    ptrs: [SHUFFLE_CAPACITY]?SlotEntry = [_]?SlotEntry{null} ** SHUFFLE_CAPACITY,
+    ptrs: [SHUFFLE_CAPACITY]?[*]u8 = [_]?[*]u8{null} ** SHUFFLE_CAPACITY,
 
     fn init(self: *ShuffleArray) void {
         self.active = false;
@@ -338,45 +384,81 @@ const ShuffleArray = struct {
         }
     }
 
-    fn activateIfNeeded(self: *ShuffleArray, size: usize) void {
-        if (!self.active) {
-            self.active = true;
-            self.size_class = size;
-        } else {
-            assert(self.size_class == size);
+    fn prefill(
+        self: *ShuffleArray,
+        underlying: Allocator,
+        size_class: usize,
+        ret_addr: usize,
+    ) bool {
+        assert(!self.active);
+        assert(size_class >= @sizeOf(usize));
+
+        self.size_class = size_class;
+
+        var slot_index: usize = 0;
+        while (slot_index < SHUFFLE_CAPACITY) : (slot_index += 1) {
+            const slot_ptr = std.mem.Allocator.rawAlloc(
+                underlying,
+                size_class,
+                SHUFFLE_ALIGNMENT,
+                ret_addr,
+            ) orelse {
+                while (slot_index > 0) {
+                    slot_index -= 1;
+                    const rollback_ptr = self.ptrs[slot_index].?;
+                    std.mem.Allocator.rawFree(
+                        underlying,
+                        rollback_ptr[0..size_class],
+                        SHUFFLE_ALIGNMENT,
+                        ret_addr,
+                    );
+                    self.ptrs[slot_index] = null;
+                }
+
+                self.size_class = 0;
+                return false;
+            };
+
+            self.ptrs[slot_index] = slot_ptr;
         }
+
+        self.active = true;
+        return true;
     }
 };
 
-/// Decide which size class to use, or return null if it doesn't fit.
-fn sizeClassIndex(len: usize) ?usize {
-    var c: usize = 8;
-    var i: usize = 0;
-    while (i < NUM_SIZE_CLASSES) : (i += 1) {
-        if (len <= c) return i;
-        c <<= 1; // next power-of-two
+/// Rounded size classes.
+fn size_class_info(size: usize) ?SizeClassInfo {
+    var size_class: usize = @sizeOf(usize);
+    var stride: usize = @sizeOf(usize);
+    var index: usize = 0;
+
+    while (index < NUM_SIZE_CLASSES) : (index += 1) {
+        if (size <= size_class) {
+            return .{
+                .index = index,
+                .size_class = size_class,
+            };
+        }
+
+        size_class += stride;
+        if ((index + 1) % 4 == 0) {
+            stride *= 2;
+        }
     }
+
     return null;
-}
-
-/// A linear congruential generator. We handle random state
-/// with a single function to keep it minimal. We do not do recursion or
-/// fancy abstractions, just a direct approach.
-fn randomIndex(state_ptr: *u64) u8 {
-    const mul = @mulWithOverflow(state_ptr.*, 6364136223846793005)[0];
-    const add = @addWithOverflow(mul, 1)[0];
-    state_ptr.* = add;
-
-    return @truncate(add);
 }
 
 test "multi-threaded shuffling allocator example usage" {
     // Just a simple single-thread test. For multi-thread usage,
     // you can launch threads that do `alloc` / `free` concurrently.
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
     const gpa = std.heap.page_allocator;
-    var shuffler = ShufflingAllocator.create(gpa, 12345);
+    var shuffler = ShufflingAllocator.create(io, gpa, 12345);
     defer shuffler.deinit();
-    const alloc = shuffler.base;
+    const alloc = shuffler.allocator();
 
     const ptr = try alloc.alloc(u8, 16);
     defer alloc.free(ptr);
@@ -389,10 +471,12 @@ test "multi-threaded shuffling allocator example usage" {
 }
 
 test "map" {
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
     const gpa = std.heap.page_allocator;
-    var shuffler = ShufflingAllocator.create(gpa, 42);
+    var shuffler = ShufflingAllocator.create(io, gpa, 42);
     defer shuffler.deinit();
-    const alloc = shuffler.base;
+    const alloc = shuffler.allocator();
 
     var hm = std.AutoHashMap(u32, u32).init(
         alloc,
@@ -408,12 +492,14 @@ test "map" {
 }
 
 test "strings" {
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
     const gpa = std.heap.page_allocator;
-    var shuffler = ShufflingAllocator.create(gpa, 123);
+    var shuffler = ShufflingAllocator.create(io, gpa, 123);
     defer shuffler.deinit();
-    var alloc = shuffler.base;
+    const alloc = shuffler.allocator();
 
-    const text = try std.fmt.allocPrintZ(alloc, "foo, bar, {s}", .{"baz"});
+    const text = try std.fmt.allocPrintSentinel(alloc, "foo, bar, {s}", .{"baz"}, 0);
     defer alloc.free(text);
 
     const want = "foo, bar, baz";
@@ -421,14 +507,16 @@ test "strings" {
 }
 
 test "test_larger_than_word_alignment" {
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
     const gpa = std.heap.page_allocator;
-    var shuffler = ShufflingAllocator.create(gpa, 0);
+    var shuffler = ShufflingAllocator.create(io, gpa, 0);
     defer shuffler.deinit();
-    const alloc = shuffler.base;
+    const alloc = shuffler.allocator();
 
     inline for (0..100) |_| {
         // Align to 32 bytes
-        const ptr = try std.mem.Allocator.alignedAlloc(alloc, u8, 32, 1);
+        const ptr = try alloc.alignedAlloc(u8, .fromByteUnits(32), 1);
         defer alloc.free(ptr);
 
         assert(@intFromPtr(ptr.ptr) % 32 == 0);
@@ -437,10 +525,12 @@ test "test_larger_than_word_alignment" {
 }
 
 test "many_small_allocs" {
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
     const page_alloc = std.heap.page_allocator;
-    var shuffler = ShufflingAllocator.create(page_alloc, 12345);
+    var shuffler = ShufflingAllocator.create(io, page_alloc, 12345);
     defer shuffler.deinit();
-    const alloc = shuffler.base;
+    const alloc = shuffler.allocator();
 
     const n = 16;
     const ptr_u32 = try alloc.alloc(u32, n);
@@ -450,4 +540,13 @@ test "many_small_allocs" {
     for (ptr_u32, 0..) |*slot, i| {
         slot.* = @truncate(i);
     }
+}
+
+test "allocator view points at live shuffler storage" {
+    var threaded: std.Io.Threaded = .init_single_threaded;
+    const io = threaded.io();
+    var shuffler = ShufflingAllocator.create(io, std.heap.page_allocator, 1);
+    const alloc = shuffler.allocator();
+
+    try std.testing.expectEqual(@intFromPtr(&shuffler), @intFromPtr(alloc.ptr));
 }
