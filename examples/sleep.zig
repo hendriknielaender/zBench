@@ -2,22 +2,24 @@ const std = @import("std");
 const zbench = @import("zbench");
 const log = std.log.scoped(.zbench_example_sleep);
 
-// using a global io here so we can use it in the benchmarked function implicitly
-var threaded: std.Io.Threaded = .init_single_threaded;
-const io = threaded.io();
+const SleepBenchmark = struct {
+    io: std.Io,
 
-fn sleepBenchmark(_: std.mem.Allocator) void {
-    io.sleep(.fromMilliseconds(100), .awake) catch |err| {
-        log.err("sleep failed: {}", .{err});
-    };
-}
+    pub fn run(self: *SleepBenchmark, _: std.mem.Allocator) void {
+        self.io.sleep(.fromMilliseconds(100), .awake) catch |err| {
+            log.err("sleep failed: {}", .{err});
+        };
+    }
+};
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
     const stdout: std.Io.File = .stdout();
+    const sleep_benchmark = SleepBenchmark{ .io = io };
 
-    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
+    var bench = zbench.Benchmark.init(init.gpa, .{});
     defer bench.deinit();
 
-    try bench.add("Sleep Benchmark", sleepBenchmark, .{});
+    try bench.addParam("Sleep Benchmark", &sleep_benchmark, .{});
     try bench.run(io, stdout);
 }

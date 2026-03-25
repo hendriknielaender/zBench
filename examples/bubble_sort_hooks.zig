@@ -10,14 +10,14 @@ const inc = @import("include");
 const zbench = @import("zbench");
 
 // Global variables modified/accessed by the hooks.
-var gpa = std.heap.DebugAllocator(.{}){};
+var benchmark_allocator: std.mem.Allocator = undefined;
 const array_size: usize = 100;
 // BenchmarkData contains the data generation logic.
 var benchmark_data: BenchmarkData = undefined;
 
 // Hooks do not accept any parameters and cannot return anything.
 fn beforeAll() void {
-    benchmark_data.init(gpa.allocator(), array_size) catch unreachable;
+    benchmark_data.init(benchmark_allocator, array_size) catch unreachable;
 }
 
 fn beforeEach() void {
@@ -45,7 +45,7 @@ fn afterEach() void {
 }
 
 fn afterAll() void {
-    benchmark_data.deinit(gpa.allocator());
+    benchmark_data.deinit(benchmark_allocator);
 }
 
 const BenchmarkData = struct {
@@ -74,17 +74,13 @@ const BenchmarkData = struct {
     }
 };
 
-pub fn main() !void {
-    var threaded: std.Io.Threaded = .init_single_threaded;
-    const io = threaded.io();
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
     const stdout: std.Io.File = .stdout();
+    benchmark_allocator = init.gpa;
 
-    var bench = zbench.Benchmark.init(gpa.allocator(), .{});
-    defer {
-        bench.deinit();
-        const deinit_status = gpa.deinit();
-        if (deinit_status == .leak) std.debug.panic("Memory leak detected", .{});
-    }
+    var bench = zbench.Benchmark.init(init.gpa, .{});
+    defer bench.deinit();
 
     try bench.add("Bubble Sort Benchmark", myBenchmark, .{
         .track_allocations = true, // Option used to show that hooks are not included in the tracking.

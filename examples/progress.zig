@@ -17,15 +17,11 @@ fn myBenchmark2(_: std.mem.Allocator) void {
     }
 }
 
-pub fn main() !void {
-    // std.Progress spawns a redraw worker via `io.concurrent`, so this example
-    // needs a threaded I/O runtime instead of `init_single_threaded`.
-    var threaded = std.Io.Threaded.init(std.heap.page_allocator, .{});
-    defer threaded.deinit();
-    const io = threaded.io();
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
     const stdout: std.Io.File = .stdout();
 
-    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
+    var bench = zbench.Benchmark.init(init.gpa, .{});
     defer bench.deinit();
 
     try bench.add("My Benchmark 1", myBenchmark1, .{});
