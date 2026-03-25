@@ -3,8 +3,6 @@ const zbench = @import("zbench");
 const builtin = @import("builtin");
 const c = std.c;
 
-var gpa = std.heap.DebugAllocator(.{}){};
-
 const OldSystemInfoBenchmark = struct {
     io: std.Io,
 
@@ -188,21 +186,16 @@ fn benchmarkStackUsageNew(allocator: std.mem.Allocator) void {
     std.mem.doNotOptimizeAway(&scratch);
 }
 
-pub fn main() !void {
-    var threaded: std.Io.Threaded = .init_single_threaded;
-    const io = threaded.io();
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
     const stdout: std.Io.File = .stdout();
     var filewriter: std.Io.File.Writer = stdout.writerStreaming(io, &.{});
     const writer: *std.Io.Writer = &filewriter.interface;
 
-    var bench = zbench.Benchmark.init(gpa.allocator(), .{
+    var bench = zbench.Benchmark.init(init.gpa, .{
         .iterations = 100,
     });
-    defer {
-        bench.deinit();
-        const deinit_status = gpa.deinit();
-        if (deinit_status == .leak) std.debug.panic("Memory leak detected", .{});
-    }
+    defer bench.deinit();
 
     try writer.writeAll("Memory Usage Comparison: System Info Retrieval\n");
     try writer.writeAll("==============================================\n\n");

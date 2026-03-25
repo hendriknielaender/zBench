@@ -24,13 +24,11 @@ zBench provides two ways to register hooks: globally or for a given benchmark.
 Global registration adds hooks to each added benchmark.
 
 ```zig
-pub fn main() !void {
-    var threaded: std.Io.Threaded = .init_single_threaded;
-    const io = threaded.io();
-
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
     const stdout: std.Io.File = .stdout();
 
-    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{ .hooks = .{
+    var bench = zbench.Benchmark.init(init.gpa, .{ .hooks = .{
         .before_all = beforeAllHook,
         .after_all = afterAllHook,
     } });
@@ -50,13 +48,11 @@ In this example, both Benchmark 1 and Benchmark 2 will execute `beforeAllHook` a
 Hooks can also be included with the `add` and `addParam` methods. 
 
 ```zig
-pub fn main() !void {
-    var threaded: std.Io.Threaded = .init_single_threaded;
-    const io = threaded.io();
-
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
     const stdout: std.Io.File = .stdout();
 
-    var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
+    var bench = zbench.Benchmark.init(init.gpa, .{});
     defer bench.deinit();
 
     try bench.add("Benchmark 1", myBenchmark, .{

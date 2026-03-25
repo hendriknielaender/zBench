@@ -108,10 +108,10 @@ pub const Definition = struct {
             .parameterised => |x| x.func(@ptrCast(x.context), allocator),
         }
         const t1_ns: i96 = t0.untilNow(io, .awake).toNanoseconds();
-        assert(t1_ns > 0);
 
         return Runner.Reading{
-            .timing_ns = @intCast(t1_ns),
+            // Extremely fast benchmarks can quantize to 0ns on some systems.
+            .timing_ns = clampTimingNs(t1_ns),
             .allocation = if (tracking) |trk| Runner.AllocationReading{
                 .max = trk.maxAllocated(),
                 .count = trk.allocationCount(),
@@ -119,3 +119,13 @@ pub const Definition = struct {
         };
     }
 };
+
+fn clampTimingNs(t1_ns: i96) u64 {
+    assert(t1_ns >= 0);
+    return @intCast(@max(t1_ns, 1));
+}
+
+test "zero-duration readings are floored to one nanosecond" {
+    try std.testing.expectEqual(@as(u64, 1), clampTimingNs(0));
+    try std.testing.expectEqual(@as(u64, 42), clampTimingNs(42));
+}

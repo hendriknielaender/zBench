@@ -1,6 +1,5 @@
 const std = @import("std");
 const zbench = @import("zbench");
-var gpa = std.heap.DebugAllocator(.{}){};
 
 fn myBenchmark(alloc: std.mem.Allocator) void {
     var result: usize = 0;
@@ -12,19 +11,14 @@ fn myBenchmark(alloc: std.mem.Allocator) void {
     }
 }
 
-pub fn main() !void {
-    var threaded: std.Io.Threaded = .init_single_threaded;
-    const io = threaded.io();
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
     const stdout: std.Io.File = .stdout();
     var filewriter: std.Io.File.Writer = stdout.writerStreaming(io, &.{});
     const writer: *std.Io.Writer = &filewriter.interface;
 
-    var bench = zbench.Benchmark.init(gpa.allocator(), .{});
-    defer {
-        bench.deinit();
-        const deinit_status = gpa.deinit();
-        if (deinit_status == .leak) std.debug.panic("Memory leak detected", .{});
-    }
+    var bench = zbench.Benchmark.init(init.gpa, .{});
+    defer bench.deinit();
 
     try bench.add("My Benchmark 1", myBenchmark, .{
         .iterations = 10,
