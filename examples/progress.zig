@@ -18,7 +18,10 @@ fn myBenchmark2(_: std.mem.Allocator) void {
 }
 
 pub fn main() !void {
-    var threaded: std.Io.Threaded = .init_single_threaded;
+    // std.Progress spawns a redraw worker via `io.concurrent`, so this example
+    // needs a threaded I/O runtime instead of `init_single_threaded`.
+    var threaded = std.Io.Threaded.init(std.heap.page_allocator, .{});
+    defer threaded.deinit();
     const io = threaded.io();
     const stdout: std.Io.File = .stdout();
 
