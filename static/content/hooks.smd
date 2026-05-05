@@ -1,0 +1,69 @@
+---
+.title = "Hooks",
+.description = "Lifecycle hooks for benchmark setup and teardown.",
+.layout = "page.shtml",
+.date = @date("2026-05-04T00:00:00"),
+.author = "hendriknielaender",
+---
+
+# Hooks
+
+This guide explains what lifecycle hooks are and how to use them.
+
+## Concepts
+
+Lifecycle hooks provide control over a benchmark environment. A hook is a function with the signature `fn () void`. Its execution is **not** included in the benchmark reports.
+
+There are 4 kinds of hooks:
+
+| Hook          | When is it called?                     | Goal               | Example                                                 |
+|---------------|----------------------------------------|--------------------|---------------------------------------------------------|
+| `before_all`  | At the start of the benchmark          | Global setup       | Allocate memory, initialize variables                   |
+| `before_each` | Before each iteration                  | Iteration setup    | Setup/allocate benchmark data                           |
+| `after_each`  | After each iteration                   | Iteration teardown | Reset/free benchmark data                               |
+| `after_all`   | At the end of the benchmark            | Global teardown    | Free memory, deinit variables                           |
+
+## Usage
+
+zBench provides two ways to register hooks: globally or for a given benchmark.
+
+### Global registration
+
+Hooks attached at runner-init level apply to every added benchmark.
+
+```zig
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    const stdout: std.Io.File = .stdout();
+
+    var bench = zbench.Benchmark.init(init.gpa, .{ .hooks = .{
+        .before_all = beforeAllHook,
+        .after_all = afterAllHook,
+    } });
+    defer bench.deinit();
+
+    try bench.add("Benchmark 1", myBenchmark, .{});
+    try bench.add("Benchmark 2", myBenchmark, .{});
+
+    try bench.run(io, stdout);
+}
+```
+
+Both Benchmark 1 and Benchmark 2 will execute `beforeAllHook` and `afterAllHook`. Hooks are optional — `before_each` / `after_each` may be omitted.
+
+### Per-benchmark registration
+
+Hooks can also be passed to `add` and `addParam`:
+
+```zig
+try bench.add("Benchmark 1", myBenchmark, .{
+    .hooks = .{
+        .before_all = beforeAllHook,
+        .after_all = afterAllHook,
+    },
+});
+
+try bench.add("Benchmark 2", myBenchmark, .{});
+```
+
+Here only Benchmark 1 will execute the hooks.

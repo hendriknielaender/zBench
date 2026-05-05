@@ -1,0 +1,41 @@
+<extend template="base.shtml">
+<div id="layout-root">
+  <div class="layout">
+    <aside class="sidebar guide-sidebar">
+      <div class="search-wrap">
+        <div class="search-box">
+          <span class="search-icon">⌕</span>
+          <input class="search-input" id="sidebar-search" placeholder="Filter guides…" autocomplete="off" spellcheck="false">
+          <span class="search-kbd">S</span>
+        </div>
+      </div>
+      <div class="decl-list" id="decl-list">
+        <div class="decl-group-label">Guides</div>
+        <a class="decl-item" data-name="Introduction" href="$site.page('intro').link()">
+          <span class="decl-tag tag-const">md</span><span class="decl-name">Introduction</span>
+        </a>
+        <a class="decl-item" data-name="Install" href="$site.page('install').link()">
+          <span class="decl-tag tag-const">md</span><span class="decl-name">Install</span>
+        </a>
+        <a class="decl-item" data-name="Quickstart" href="$site.page('quickstart').link()">
+          <span class="decl-tag tag-const">md</span><span class="decl-name">Quickstart</span>
+        </a>
+        <a class="decl-item" data-name="Hooks" href="$site.page('hooks').link()">
+          <span class="decl-tag tag-const">md</span><span class="decl-name">Hooks</span>
+        </a>
+        <a class="decl-item" data-name="Advanced" href="$site.page('advanced').link()">
+          <span class="decl-tag tag-const">md</span><span class="decl-name">Advanced</span>
+        </a>
+        <div class="decl-group-label">Reference</div>
+        <a class="decl-item" data-name="API" href="/zBench/api/">
+          <span class="decl-tag tag-fn">api</span><span class="decl-name">API Reference</span>
+        </a>
+      </div>
+    </aside>
+    <main class="main">
+      <article class="prose">
+        <div :html="$page.content()"></div>
+      </article>
+    </main>
+  </div>
+</div>

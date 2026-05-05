@@ -1,0 +1,76 @@
+---
+.title = "Install",
+.description = "Add zBench to your Zig project.",
+.layout = "page.shtml",
+.date = @date("2026-05-04T00:00:00"),
+.author = "hendriknielaender",
+---
+
+# Install
+
+You can use `zig fetch` to conveniently set the hash in the `build.zig.zon` file and update an existing dependency.
+
+Run the following command to fetch the zBench package:
+
+```bash
+zig fetch https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz --save
+```
+
+Using `zig fetch` simplifies managing dependencies by automatically handling the package hash, ensuring your `build.zig.zon` file is up to date.
+
+## Option 1 — build.zig.zon
+
+Declare zBench as a dependency in `build.zig.zon`:
+
+```zig
+.{
+    .name = "my-project",
+    .version = "1.0.0",
+    .paths = .{""},
+    .dependencies = .{
+        .zbench = .{
+            .url = "https://github.com/hendriknielaender/zbench/archive/<COMMIT>.tar.gz",
+        },
+    },
+}
+```
+
+Add the module in `build.zig`:
+
+```zig
+const zbench_module = b.dependency("zbench", .{
+    .target = target,
+    .optimize = optimize,
+}).module("zbench");
+
+exe.root_module.addImport("zbench", zbench_module);
+```
+
+Run `zig build` once — it will print the expected hash. Paste it back into the `.dependencies.zbench` entry as `.hash = "<HASH>"`.
+
+## Option 2 — git submodule
+
+On your project root directory, make a `libs/` directory:
+
+```bash
+git submodule add https://github.com/hendriknielaender/zBench libs/zbench
+```
+
+Then add the module to your `build.zig`:
+
+```zig
+exe.root_module.addAnonymousImport("zbench", .{
+    .root_source_file = b.path("libs/zbench/zbench.zig"),
+});
+```
+
+Now you can import it:
+
+```zig
+const zbench = @import("zbench");
+```
+
+## Further Reading
+
+- [Zig Build System](https://ziglang.org/learn/build-system/)
+- [Build System Tricks](https://ziggit.dev/t/build-system-tricks/)

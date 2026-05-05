@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head id="head">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="title" :text="$page.title"></title>
+  <meta name="description" content="$page.description">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;700&family=Geist+Mono:wght@300;400;700&display=swap">
+  <link rel="stylesheet" href="$site.asset('styles.css').link()">
+  <link rel="icon" type="image/png" href="$site.asset('logo.png').link()">
+</head>
+<body id="body">
+  <nav class="nav">
+    <a class="nav-logo" href="$site.page('').link()">
+      <img src="$site.asset('logo.png').link()" alt="zBench">
+      zBench
+    </a>
+    <span class="nav-sep">/</span>
+    <span class="nav-title" :text="$page.title"></span>
+    <span class="nav-ver">v0.13.0</span>
+    <div class="nav-end">
+      <a class="nav-link" href="$site.page('intro').link()">Guides</a>
+      <a class="nav-link" href="/zBench/api/">API</a>
+      <a class="btn-ghost" href="https://github.com/hendriknielaender/zBench" target="_blank" rel="noreferrer">★ GitHub</a>
+    </div>
+  </nav>
+
+  <div id="layout-root"><super></div>
+
+  <script src="$site.asset('search.js').link()" defer></script>
+</body>
+</html>

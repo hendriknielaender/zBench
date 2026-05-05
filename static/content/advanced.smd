@@ -1,0 +1,23 @@
+---
+.title = "Advanced",
+.description = "Notes on advanced usage and platform-specific gotchas.",
+.layout = "page.shtml",
+.date = @date("2026-05-04T00:00:00"),
+.author = "hendriknielaender",
+---
+
+# Advanced
+
+## Note for Windows Users
+
+If you encounter issues with character encoding — such as misrepresentation of "plusminus" (±) or "sigma" (σ) symbols in the benchmark results — it's likely due to Windows using UTF-16 LE encoding by default. To ensure characters are displayed correctly, switch your system to UTF-8:
+
+1. Open **Control Panel**.
+2. Navigate to **Region** > **Administrative** tab.
+3. Click **Change system locale…**.
+4. Check **Beta: Use Unicode UTF-8 for worldwide language support**.
+5. Click **OK** and restart your computer if prompted.
+
+This setting configures your system to use UTF-8 encoding for non-Unicode programs, which resolves character display issues in the benchmark output.
+
+See also: [Zig console output encoding issue](https://github.com/ziglang/zig/issues/7600#issuecomment-753563786).
