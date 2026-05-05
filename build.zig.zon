@@ -8,7 +8,6 @@
             .hash = "zine-0.11.2-ou6nIAVkLQEFYFBWLqQ1Jxyub0CG5kObgTQaeSq9cI9W",
         },
     },
-    .minimum_zig_version = "0.16.0",
     .paths = .{
         "src",
         // examples not listed / excluded
