@@ -2,12 +2,6 @@
     .name = .zbench,
     .fingerprint = 0xbb819b3cef5c3761,
     .version = "0.13.0",
-    .dependencies = .{
-        .zine = .{
-            .url = "git+https://github.com/kristoff-it/zine#acf07577b158475c7d54f3461c3348b8a0a6a6d3",
-            .hash = "zine-0.11.2-ou6nIAVkLQEFYFBWLqQ1Jxyub0CG5kObgTQaeSq9cI9W",
-        },
-    },
     .paths = .{
         "src",
         // examples not listed / excluded

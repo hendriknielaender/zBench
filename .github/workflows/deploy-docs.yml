@@ -23,12 +23,13 @@ jobs:
           version: v0.11.2
 
       - name: Build site (Zine + embedded autodocs)
+        working-directory: static
         run: zig build site -Dzine-system=true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./zig-out/site
+          path: ./static/zig-out/site
 
   deploy:
     needs: build
