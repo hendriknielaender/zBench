@@ -1,7 +1,3 @@
-//!zig-autodoc-guide: ../docs/intro.md
-//!zig-autodoc-guide: ../docs/quickstart.md
-//!zig-autodoc-guide: ../docs/advanced.md
-
 const std = @import("std");
 
 // Export public API
