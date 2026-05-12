@@ -1,6 +1,6 @@
 ---
 .title = "zBench — Zig benchmarking",
-.description = "A streamlined, zero-dependency benchmarking library for Zig.",
+.description = "A benchmarking library for Zig",
 .layout = "index.shtml",
 .date = @date("2026-05-04T00:00:00"),
 .author = "hendriknielaender",
