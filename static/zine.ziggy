@@ -1,0 +1,8 @@
+Site {
+    .title = "zBench",
+    .host_url = "https://hendriknielaender.github.io",
+    .url_path_prefix = "zBench",
+    .content_dir_path = "content",
+    .layouts_dir_path = "layouts",
+    .assets_dir_path = "assets",
+}

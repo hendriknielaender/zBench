@@ -3,7 +3,7 @@
 [![MIT license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/hendriknielaender/zbench/blob/HEAD/LICENSE)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/hendriknielaender/zbench)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/hendriknielaender/zbench/blob/HEAD/CONTRIBUTING.md)
-<img src="logo.png" alt="zBench logo" align="right" width="20%"/>
+<img src="static/assets/logo.png" alt="zBench logo" align="right" width="20%"/>
 
 zBench is a benchmarking library for the Zig programming language. It is designed to provide easy-to-use functionality to measure and compare the performance of your code.
 

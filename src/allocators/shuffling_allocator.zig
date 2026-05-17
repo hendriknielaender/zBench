@@ -373,7 +373,7 @@ pub const ShufflingAllocator = struct {
 const ShuffleArray = struct {
     active: bool = false,
     size_class: usize = 0,
-    ptrs: [SHUFFLE_CAPACITY]?[*]u8 = [_]?[*]u8{null} ** SHUFFLE_CAPACITY,
+    ptrs: [SHUFFLE_CAPACITY]?[*]u8 = @splat(null),
 
     fn init(self: *ShuffleArray) void {
         self.active = false;

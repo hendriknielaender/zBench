@@ -2,23 +2,34 @@ name: Deploy Documentation
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: mlugg/setup-zig@v2
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
         with:
-          version: master
-      - run: zig build docs
+          version: 0.16.0
+
+      - name: Setup Zine
+        uses: kristoff-it/setup-zine@v1
+        with:
+          version: v0.11.2
+
+      - name: Build site (Zine + embedded autodocs)
+        working-directory: static
+        run: zig build site -Dzine-system=true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./zig-out/docs
+          path: ./static/zig-out/site
 
   deploy:
     needs: build

@@ -1,0 +1,42 @@
+<extend template="base.shtml">
+<div id="layout-root">
+  <main class="main" style="overflow-y:auto;height:calc(100vh - var(--nav-h));padding-top:var(--nav-h)">
+    <section class="hero">
+      <div class="hero-eyebrow">Zero-dependency · Zig 0.16</div>
+      <h1>A streamlined <span>benchmarking</span> library for Zig.</h1>
+      <p>zBench measures and compares the performance of code segments — from microbenchmarks to whole-system tests — with percentile timings, allocation tracking, and lifecycle hooks.</p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="$site.page('quickstart').link()">Get started →</a>
+        <a class="btn-secondary" href="/zBench/api/">Browse API</a>
+        <a class="btn-secondary" href="https://github.com/hendriknielaender/zBench" target="_blank" rel="noreferrer">★ GitHub</a>
+      </div>
+    </section>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>Simple API</h3>
+        <p>Initialize, register a function, call <code>run()</code>. The whole surface fits on one screen.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Precise Metrics</h3>
+        <p>Avg, min, max, std-dev, p75/p99/p99.5 percentiles — every measurement, every run.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Allocation Tracking</h3>
+        <p>Optional allocator instrumentation reports bytes allocated and freed per iteration.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Lifecycle Hooks</h3>
+        <p>before_all / after_all / before_each / after_each — set up and tear down without polluting timings.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Shuffling Allocator</h3>
+        <p>Experimental heap-randomizing allocator wrapper to reduce predictable-cache bias.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Pure Zig</h3>
+        <p>No C dependencies. Builds with stock <code>zig build</code>. Tracks Zig 0.16 directly.</p>
+      </div>
+    </div>
+  </main>
+</div>

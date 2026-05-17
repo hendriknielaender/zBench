@@ -1,0 +1,45 @@
+---
+.title = "Quickstart",
+.description = "Write your first zBench benchmark in three steps.",
+.layout = "page.shtml",
+.date = @date("2026-05-04T00:00:00"),
+.author = "hendriknielaender",
+---
+
+# Quickstart
+
+This guide helps you quickly start using zBench in your Zig projects.
+
+## Installation
+
+Integrate zBench into your project either using `build.zig.zon` or as a git submodule. See the [Install](/install/) page for the full setup walkthrough.
+
+## Writing Benchmarks
+
+Import zbench in your Zig code and create a benchmark function:
+
+```zig
+const std = @import("std");
+const zbench = @import("zbench");
+
+fn benchmarkMyFunction(_: std.mem.Allocator) void {
+    // Benchmark code here
+}
+```
+
+Run the benchmark from main:
+
+```zig
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    const stdout: std.Io.File = .stdout();
+
+    var bench = zbench.Benchmark.init(init.gpa, .{});
+    defer bench.deinit();
+
+    try bench.add("My Benchmark", benchmarkMyFunction, .{});
+    try bench.run(io, stdout);
+}
+```
+
+That's it — run with `zig build run` and you'll get a formatted report with timing percentiles.

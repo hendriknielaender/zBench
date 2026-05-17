@@ -1,7 +1,11 @@
 .zig-cache/
 zig-out/
+zig-pkg/
 
 # libs
 libs
+
+# zine output (when invoked directly via `zine release` in static/)
+static/public/
 
 .DS_Store
