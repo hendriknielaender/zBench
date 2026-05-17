@@ -1,6 +1,6 @@
 # Introduction
 
-Welcome to zBench, a streamlined benchmarking library for the Zig programming language. zBench is designed to offer developers an easy and efficient way to measure and compare the performance of code segments in Zig applications.
+Welcome to zBench, a benchmarking library for the Zig programming language. zBench is designed to offer developers an easy and efficient way to measure and compare the performance of code segments in Zig applications.
 
 ## Features
 
