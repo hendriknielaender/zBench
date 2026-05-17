@@ -3,7 +3,7 @@
   <main class="main" style="overflow-y:auto;height:calc(100vh - var(--nav-h));padding-top:var(--nav-h)">
     <section class="hero">
       <div class="hero-eyebrow">Zero-dependency · Zig 0.16</div>
-      <h1>A streamlined <span>benchmarking</span> library for Zig.</h1>
+      <h1>A <span>benchmarking</span> library for Zig.</h1>
       <p>zBench measures and compares the performance of code segments — from microbenchmarks to whole-system tests — with percentile timings, allocation tracking, and lifecycle hooks.</p>
       <div class="hero-actions">
         <a class="btn-primary" href="$site.page('quickstart').link()">Get started →</a>
