@@ -88,6 +88,24 @@ pub fn Statistics(comptime T: type) type {
     };
 }
 
+pub fn throughputPerSecond(
+    processed_per_run: usize,
+    iterations: usize,
+    total_ns: u64,
+) f64 {
+    if (total_ns == 0) return 0;
+
+    const total_processed =
+        @as(f64, @floatFromInt(processed_per_run)) *
+        @as(f64, @floatFromInt(iterations));
+
+    const seconds =
+        @as(f64, @floatFromInt(total_ns)) /
+        @as(f64, @floatFromInt(std.time.ns_per_s));
+
+    return total_processed / seconds;
+}
+
 pub fn fmtJSON(
     comptime T: type,
     unit: []const u8,

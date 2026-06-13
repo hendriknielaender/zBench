@@ -48,6 +48,14 @@ pub const Config = struct {
     /// This can be combined with track_allocations to wrap
     /// the shuffling allocator in a tracking allocator.
     use_shuffling_allocator: bool = false,
+
+    /// Number of bytes processed by one benchmark run.
+    /// When set, reports throughput as bytes per second.
+    bytes_per_run: ?usize = null,
+
+    /// Number of items processed by one benchmark run.
+    /// When set, reports throughput as items per second.
+    items_per_run: ?usize = null,
 };
 
 /// A function pointer type that represents a benchmark function.

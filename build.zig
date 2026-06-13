@@ -76,6 +76,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         "shuffling_allocator",
         "sleep",
         "systeminfo",
+        "throughput",
     };
 
     for (example_names) |example_name| {
