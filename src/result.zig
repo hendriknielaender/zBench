@@ -145,6 +145,10 @@ pub const Result = struct {
                     m.stddev,
                 }),
             });
+
+            _ = try std.Io.Writer.alignBuffer(writer, "-", 15, .left, ' ');
+            _ = try std.Io.Writer.alignBuffer(writer, "-", 15, .left, ' ');
+
             // Minimum and maximum
             try terminal.setColor(Color.blue);
             try writer.print("{s:<29}", .{
