@@ -76,6 +76,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
         "shuffling_allocator",
         "sleep",
         "systeminfo",
+        "throughput",
     };
 
     for (example_names) |example_name| {
@@ -88,7 +89,7 @@ fn setupExamples(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.
             }),
         });
         const install_example = b.addInstallArtifact(example, .{});
-        const zbench_mod = b.addModule("zbench", .{
+        const zbench_mod = b.createModule(.{
             .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/zbench.zig" } },
         });
         example.root_module.addImport("zbench", zbench_mod);

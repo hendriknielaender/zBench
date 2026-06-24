@@ -28,6 +28,17 @@ pub fn main(init: std.process.Init) !void {
         .iterations = 10,
         .track_allocations = true,
     });
+    try bench.add("My Benchmark 3", myBenchmark, .{
+        .iterations = 10,
+        .track_allocations = true,
+        .bytes_per_run = 2_000 * 1024,
+    });
+    try bench.add("My Benchmark 4", myBenchmark, .{
+        .iterations = 10,
+        .track_allocations = true,
+        .bytes_per_run = 2_000 * 1024,
+        .items_per_run = 2,
+    });
 
     try writer.writeAll("[");
     var iter = try bench.iterator();

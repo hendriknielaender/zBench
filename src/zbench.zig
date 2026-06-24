@@ -64,7 +64,7 @@ pub const Benchmark = struct {
     ) !void {
         // Check the benchmark parameter is the proper type.
         const T: type = switch (@typeInfo(@TypeOf(benchmark))) {
-            .pointer => |ptr| if (ptr.is_const) ptr.child else @compileError(
+            .pointer => |ptr| if (ptr.attrs.@"const") ptr.child else @compileError(
                 "benchmark must be a const ptr to a struct with a 'run' method",
             ),
             else => @compileError(
@@ -149,9 +149,12 @@ pub const Benchmark = struct {
                 defer self.runner = null;
                 defer self.remaining = self.remaining[1..];
                 if (self.remaining[0].config.hooks.after_all) |hook| hook();
+
                 return Step{ .result = Result.init(
                     self.remaining[0].name,
                     try runner.finish(),
+                    self.remaining[0].config.bytes_per_run,
+                    self.remaining[0].config.items_per_run,
                 ) };
             }
         }
@@ -193,8 +196,8 @@ pub const Benchmark = struct {
 /// Write the prettyPrint() header to a writer.
 pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
     const _name_len = if (name_len > NAME_LEN_LIMIT) NAME_LEN_LIMIT else name_len;
-    const header_fmt: []const u8 = "{s:<8} {s:<14} {s:<23} {s:<28} {s:<10} {s:<10} {s:<10}\n";
-    const dashes_repeat: usize = 111;
+    const header_fmt: []const u8 = "{s:<8} {s:<14} {s:<23} {s:<14} {s:<14} {s:<28} {s:<10} {s:<10} {s:<10}\n";
+    const dashes_repeat: usize = 139;
 
     var w: std.Io.File.Writer = file.writerStreaming(io, &.{});
     const writer: *std.Io.Writer = &w.interface;
@@ -209,6 +212,8 @@ pub fn prettyPrintHeader(io: std.Io, file: std.Io.File, name_len: usize) !void {
             "runs",
             "total time",
             "time/run (avg ± σ)",
+            "bytes/sec",
+            "items/sec",
             "(min ... max)",
             "p75",
             "p99",
