@@ -1,7 +1,7 @@
 const std = @import("std");
 const log = std.log.scoped(.zbench_build);
 
-const version = std.SemanticVersion{ .major = 0, .minor = 13, .patch = 0 };
+const version = std.SemanticVersion{ .major = 0, .minor = 14, .patch = 1 };
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -21,14 +21,16 @@ pub fn build(b: *std.Build) void {
 }
 
 fn setupLibrary(b: *std.Build, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) *std.Build.Step.Compile {
+    const zbench_mod = b.addModule("zbench", .{
+        .root_source_file = b.path("src/zbench.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const lib = b.addLibrary(.{
         .linkage = .static,
         .name = "zbench",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/zbench.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = zbench_mod,
         .version = version,
     });
 
