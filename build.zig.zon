@@ -1,7 +1,8 @@
 .{
     .name = .zbench,
     .fingerprint = 0xbb819b3cef5c3761,
-    .version = "0.13.0",
+    .version = "0.14.1",
+    .minimum_zig_version = "0.17.0-dev.931+84f84267c",
     .paths = .{
         "src",
         // examples not listed / excluded

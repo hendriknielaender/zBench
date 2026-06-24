@@ -19,7 +19,7 @@
     </a>
     <span class="nav-sep">/</span>
     <span class="nav-title" :text="$page.title"></span>
-    <span class="nav-ver">v0.13.0</span>
+    <span class="nav-ver">v0.14.1</span>
     <div class="nav-end">
       <a class="nav-link" href="$site.page('intro').link()">Guides</a>
       <a class="nav-link" href="/zBench/api/">API</a>
