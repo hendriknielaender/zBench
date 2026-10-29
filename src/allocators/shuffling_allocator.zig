@@ -161,7 +161,7 @@ pub const ShufflingAllocator = struct {
 
         // Large alignments must bypass shuffling because this implementation
         // only maintains word-aligned spare objects
-        if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
+        if ((@as(u64, 1) << @backingInt(alignment)) > @alignOf(usize)) {
             return std.mem.Allocator.rawAlloc(
                 self.underlying,
                 len,
@@ -221,7 +221,7 @@ pub const ShufflingAllocator = struct {
         if (memory.len == 0) return;
 
         // Large alignments bypass shuffling for the same reason as alloc.
-        if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
+        if ((@as(u64, 1) << @backingInt(alignment)) > @alignOf(usize)) {
             std.mem.Allocator.rawFree(
                 self.underlying,
                 memory,
@@ -282,7 +282,7 @@ pub const ShufflingAllocator = struct {
         const tmp: *align(@alignOf(ShufflingAllocator)) anyopaque = @alignCast(self_ptr);
         const self: *ShufflingAllocator = @ptrCast(tmp);
 
-        if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
+        if ((@as(u64, 1) << @backingInt(alignment)) > @alignOf(usize)) {
             return std.mem.Allocator.rawResize(
                 self.underlying,
                 memory,
@@ -332,7 +332,7 @@ pub const ShufflingAllocator = struct {
         const tmp: *align(@alignOf(ShufflingAllocator)) anyopaque = @alignCast(self_ptr);
         const self: *ShufflingAllocator = @ptrCast(tmp);
 
-        if ((@as(u64, 1) << @intFromEnum(alignment)) > @alignOf(usize)) {
+        if ((@as(u64, 1) << @backingInt(alignment)) > @alignOf(usize)) {
             return std.mem.Allocator.rawRemap(
                 self.underlying,
                 memory,
